@@ -275,23 +275,36 @@
             }
         }
 
-        // Finales Rendering ohne Cursor
+// ... (Ende der while-Schleife für den Stream)
         botBubble.innerHTML = marked.parse(fullReply);
         
-        // Speichern
         allChats[currentId].messages.push({ role: "user", content: text });
         allChats[currentId].messages.push({ role: "assistant", content: fullReply });
-        if (allChats[currentId].messages.length === 2) allChats[currentId].title = text.substring(0, 25);
+
+        // NEU: Automatisches Benennen nach der ersten Frage
+        if (allChats[currentId].title === "Neuer Chat") {
+            try {
+                const nameRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "llama-3.1-8b-instant", // Ein kleineres, schnelleres Modell für den Namen
+                        messages: [
+                            { role: "system", content: "Gib mir einen kurzen Titel (max 3 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel." },
+                            { role: "user", content: text }
+                        ]
+                    })
+                });
+                const nameData = await nameRes.json();
+                allChats[currentId].title = nameData.choices[0].message.content.replace(/["']/g, ""); // Entfernt Anführungszeichen
+            } catch (e) {
+                // Fallback falls Namens-Generierung fehlschlägt
+                allChats[currentId].title = text.substring(0, 20) + "...";
+            }
+        }
+
         save();
         renderChatList();
-
-    } catch (e) {
-        botBubble.innerHTML = "Netzwerkfehler. Bitte versuch es erneut.";
-        console.error(e);
-    } finally {
-        isTyping = false;
-    }
-}
 
 // Du kannst die alte Funktion typeEffect() komplett löschen, sie wird nicht mehr benötigt.
 
@@ -331,22 +344,62 @@
         (allChats[currentId].messages || []).forEach(m => addMsgUI(m.role, m.content));
     }
 
-    function renderChatList() {
-        const list = document.getElementById("chat-list");
-        list.innerHTML = "";
-        Object.keys(allChats).reverse().forEach(id => {
-            const item = document.createElement("div");
-            item.className = "chat-slot";
-            item.style.padding = "12px";
-            item.style.cursor = "pointer";
-            item.style.borderRadius = "12px";
-            item.style.marginBottom = "8px";
-            item.style.background = id === currentId ? "rgba(0,127,255,0.1)" : "transparent";
-            item.innerHTML = `<i class="fas fa-comment"></i> ${allChats[id].title}`;
-            item.onclick = () => { currentId = id; save(); renderMessages(); renderChatList(); };
-            list.appendChild(item);
-        });
+   function renderChatList() {
+    const list = document.getElementById("chat-list");
+    list.innerHTML = "";
+    Object.keys(allChats).sort((a, b) => allChats[b].date - allChats[a].date).forEach(id => {
+        const item = document.createElement("div");
+        item.className = "chat-slot";
+        // Styling direkt im JS für die Icons
+        item.style.display = "flex";
+        item.style.justifyContent = "space-between";
+        item.style.alignItems = "center";
+        item.style.padding = "10px 15px";
+        item.style.cursor = "pointer";
+        item.style.borderRadius = "12px";
+        item.style.marginBottom = "8px";
+        item.style.background = id === currentId ? "rgba(0,127,255,0.15)" : "transparent";
+        item.style.color = id === currentId ? "var(--primary)" : "var(--text-color)";
+
+        item.innerHTML = `
+            <div onclick="selectChat('${id}')" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                <i class="fas fa-comment"></i> ${allChats[id].title}
+            </div>
+            <i class="fas fa-trash-alt delete-icon" onclick="deleteChat(event, '${id}')" style="margin-left:10px; opacity:0.5; transition:0.3s;"></i>
+        `;
+        
+        // Hover Effekt für die Mülltonne
+        const trash = item.querySelector('.delete-icon');
+        trash.onmouseover = () => trash.style.color = "var(--danger)";
+        trash.onmouseout = () => trash.style.color = "inherit";
+
+        list.appendChild(item);
+    });
+}
+
+// Hilfsfunktionen für die Liste
+function selectChat(id) {
+    currentId = id;
+    save();
+    renderMessages();
+    renderChatList();
+}
+
+function deleteChat(event, id) {
+    event.stopPropagation(); // Verhindert, dass der Chat beim Löschen ausgewählt wird
+    if (confirm("Chat wirklich löschen?")) {
+        delete allChats[id];
+        const remainingIds = Object.keys(allChats);
+        if (remainingIds.length > 0) {
+            currentId = remainingIds[remainingIds.length - 1];
+        } else {
+            createNewChat();
+        }
+        save();
+        renderMessages();
+        renderChatList();
     }
+}
 
     function toggleSidebar(id) {
         document.getElementById(id).classList.toggle(id === 'sidebar-left' ? 'collapsed-left' : 'collapsed-right');
