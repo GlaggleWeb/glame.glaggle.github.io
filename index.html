@@ -305,6 +305,12 @@
 
         save();
         renderChatList();
+        } catch (e) {
+        botBubble.innerHTML = "Netzwerkfehler. Bitte versuch es erneut.";
+    } finally {
+        isTyping = false;
+    }
+}
 
 // Du kannst die alte Funktion typeEffect() komplett löschen, sie wird nicht mehr benötigt.
 
