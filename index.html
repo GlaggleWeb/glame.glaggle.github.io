@@ -6,6 +6,8 @@
     <title>Glame AI Pro</title>
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -291,7 +293,7 @@ code {
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
 
-        while (true) {
+       while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
@@ -305,8 +307,9 @@ code {
                         const content = json.choices[0].delta.content || "";
                         fullReply += content;
                         
-                        // Sofortiges Update der UI ohne künstliche Verzögerung
-                        botBubble.innerHTML = marked.parse(fullReply + '<span class="cursor"></span>');
+                        // GEÄNDERT: Nutzt jetzt die neue Funktion für Farben & Buttons
+                        updateBubbleContent(botBubble, fullReply + ' <span class="cursor"></span>');
+                        
                         chatWindow.scrollTop = chatWindow.scrollHeight;
                     } catch (e) {
                         // Ignoriere unvollständige JSON-Chunks
@@ -315,8 +318,10 @@ code {
             }
         }
 
+        // Nach der Schleife: Cursor entfernen und finales Rendering
+        updateBubbleContent(botBubble, fullReply);
+
 // ... (Ende der while-Schleife für den Stream)
-        botBubble.innerHTML = marked.parse(fullReply);
         
         allChats[currentId].messages.push({ role: "user", content: text });
         allChats[currentId].messages.push({ role: "assistant", content: fullReply });
@@ -354,17 +359,34 @@ code {
 
 // Du kannst die alte Funktion typeEffect() komplett löschen, sie wird nicht mehr benötigt.
 
-   function addMsgUI(role, content) {
+function addMsgUI(role, content) {
     const container = document.createElement("div");
     container.className = `msg-container ${role}`;
     const bubble = document.createElement("div");
     bubble.className = "bubble";
     
-    // Markdown rendern
+    // Wir speichern den Inhalt und rendern ihn
+    updateBubbleContent(bubble, content);
+
+    container.appendChild(bubble);
+    chatWindow.appendChild(container);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return bubble;
+}
+
+// Neue Hilfsfunktion, die auch während des Streamings aufgerufen werden kann
+function updateBubbleContent(bubble, content) {
     bubble.innerHTML = marked.parse(content);
     
-    // Code-Blöcke finden und Buttons hinzufügen
+    // Prism Highlighting anwenden
+    if (window.Prism) {
+        Prism.highlightAllUnder(bubble);
+    }
+    
+    // Copy-Buttons hinzufügen
     bubble.querySelectorAll('pre').forEach(block => {
+        if (block.querySelector('.copy-btn')) return; // Verhindert doppelte Buttons
+
         const btn = document.createElement('button');
         btn.className = 'copy-btn';
         btn.innerHTML = '<i class="fas fa-copy"></i> Kopieren';
@@ -380,14 +402,8 @@ code {
                 }, 2000);
             });
         };
-        
         block.appendChild(btn);
     });
-
-    container.appendChild(bubble);
-    chatWindow.appendChild(container);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-    return bubble;
 }
 
     // Mikrofon (Besserer Halt)
