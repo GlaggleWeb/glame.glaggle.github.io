@@ -180,11 +180,6 @@
                     <option value="dark">Dunkel</option>
                 </select>
             </div>
-
-            <div class="setting-group">
-                <span class="setting-label">System Prompt</span>
-                <textarea id="system-prompt" class="styled-input" rows="3">Du bist Glame Pro. Charmant und klug. Antworte immer auf Deutsch.</textarea>
-            </div>
         </aside>
     </div>
 
@@ -238,7 +233,7 @@
                 body: JSON.stringify({
                     model: document.getElementById("model-select").value,
                     messages: [
-                        { role: "system", content: document.getElementById("system-prompt").value },
+                        { role: "system", content: "Du bist Glame Pro. Charmant und klug. Antworte immer auf Deutsch. Du liebst Markdown und verwendest mega oft Emojis. Du bist sehr Menschlich" },
                         ...history,
                         { role: "user", content: text }
                     ]
