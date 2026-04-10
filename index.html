@@ -214,47 +214,86 @@
     sendBtn.onclick = handleSend;
     userInput.onkeydown = (e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }};
 
-    async function handleSend() {
-        const text = userInput.value.trim();
-        if (!text || isTyping) return;
+  async function handleSend() {
+    const text = userInput.value.trim();
+    if (!text || isTyping) return;
 
-        isTyping = true;
-        addMsgUI("user", text);
-        userInput.value = "";
-        userInput.style.height = "auto";
+    isTyping = true;
+    addMsgUI("user", text);
+    userInput.value = "";
+    userInput.style.height = "auto";
 
-        const botBubble = addMsgUI("bot", "...");
-        const history = allChats[currentId].messages.slice(-8).map(m => ({ role: m.role, content: m.content }));
+    // Bot-Bubble leer erstellen für den Stream
+    const botBubble = addMsgUI("bot", "");
+    let fullReply = "";
 
-        try {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    model: document.getElementById("model-select").value,
-                    messages: [
-                        { role: "system", content: "Du bist Glame Pro. Charmant und klug. Antworte immer auf Deutsch. Du liebst Markdown und verwendest mega oft Emojis. Du bist sehr Menschlich" },
-                        ...history,
-                        { role: "user", content: text }
-                    ]
-                })
-            });
+    const history = allChats[currentId].messages.slice(-8).map(m => ({ role: m.role, content: m.content }));
 
-            const data = await res.json();
-            const reply = data.choices[0].message.content;
-            
-            await typeEffect(botBubble, reply);
-            allChats[currentId].messages.push({ role: "user", content: text });
-            allChats[currentId].messages.push({ role: "assistant", content: reply });
-            if (allChats[currentId].messages.length === 2) allChats[currentId].title = text.substring(0, 25);
-            save();
-            renderChatList();
-        } catch (e) {
-            botBubble.innerHTML = "Netzwerkfehler. Bitte versuch es erneut.";
-        } finally {
-            isTyping = false;
+    try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { 
+                "Authorization": `Bearer ${API_KEY}`, 
+                "Content-Type": "application/json" 
+            },
+            body: JSON.stringify({
+                model: document.getElementById("model-select").value,
+                stream: true, // AKTIVIERT DAS STREAMING
+                messages: [
+                    { role: "system", content: "Du bist Glame Pro. Charmant und klug. Antworte immer auf Deutsch. Du liebst Markdown und verwendest oft Emojis. Du bist sehr Menschlich (du sagst aber nciht das du emojis brauchst un markdown liebst)" },
+                    ...history,
+                    { role: "user", content: text }
+                ]
+            })
+        });
+
+        // Den Stream vom Server lesen
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split("\n");
+
+            for (const line of lines) {
+                if (line.startsWith("data: ") && line !== "data: [DONE]") {
+                    try {
+                        const json = JSON.parse(line.substring(6));
+                        const content = json.choices[0].delta.content || "";
+                        fullReply += content;
+                        
+                        // Sofortiges Update der UI ohne künstliche Verzögerung
+                        botBubble.innerHTML = marked.parse(fullReply + '<span class="cursor"></span>');
+                        chatWindow.scrollTop = chatWindow.scrollHeight;
+                    } catch (e) {
+                        // Ignoriere unvollständige JSON-Chunks
+                    }
+                }
+            }
         }
+
+        // Finales Rendering ohne Cursor
+        botBubble.innerHTML = marked.parse(fullReply);
+        
+        // Speichern
+        allChats[currentId].messages.push({ role: "user", content: text });
+        allChats[currentId].messages.push({ role: "assistant", content: fullReply });
+        if (allChats[currentId].messages.length === 2) allChats[currentId].title = text.substring(0, 25);
+        save();
+        renderChatList();
+
+    } catch (e) {
+        botBubble.innerHTML = "Netzwerkfehler. Bitte versuch es erneut.";
+        console.error(e);
+    } finally {
+        isTyping = false;
     }
+}
+
+// Du kannst die alte Funktion typeEffect() komplett löschen, sie wird nicht mehr benötigt.
 
     function addMsgUI(role, content) {
         const container = document.createElement("div");
