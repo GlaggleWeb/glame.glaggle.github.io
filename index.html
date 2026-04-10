@@ -307,25 +307,6 @@
         return bubble;
     }
 
-    async function typeEffect(element, text) {
-        element.innerHTML = "";
-        let i = 0;
-        return new Promise(resolve => {
-            function type() {
-                if (i < text.length) {
-                    element.innerHTML = marked.parse(text.substring(0, i + 1) + '<span class="cursor"></span>');
-                    i++;
-                    setTimeout(type, 15);
-                    chatWindow.scrollTop = chatWindow.scrollHeight;
-                } else {
-                    element.innerHTML = marked.parse(text);
-                    resolve();
-                }
-            }
-            type();
-        });
-    }
-
     // Mikrofon (Besserer Halt)
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (Speech) {
