@@ -56,13 +56,44 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: 'Arial Rounded MT Bold', 'Segoe UI', sans-serif;
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-            transition: background-color 0.3s, color 0.3s;
-        }
+       body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Arial Rounded MT Bold', 'Segoe UI', sans-serif;
+    display: flex; 
+    flex-direction: column; 
+    /* Fix für Mobile: Benutze dvh (dynamic viewport height) falls verfügbar */
+    height: 100vh;
+    height: 100dvh; 
+    overflow: hidden;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* --- MOBILE OPTIMIERUNGEN --- */
+@media (max-width: 768px) {
+    #chat-window {
+        padding: 20px 5%; /* Mehr Platz auf schmalen Bildschirmen */
+    }
+
+    #input-wrapper {
+        padding: 0 5% 20px 5%;
+    }
+
+    .navbar {
+        height: 60px;
+    }
+
+    .nav-title {
+        font-size: 16px;
+    }
+
+    /* Sidebar soll auf Mobile das Bild überlagern */
+    .sidebar {
+        position: absolute;
+        height: 100%;
+        width: 80%; /* Fast volle Breite auf Mobile */
+    }
+}
 
         /* --- NAVBAR --- */
         .navbar {
