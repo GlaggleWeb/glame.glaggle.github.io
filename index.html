@@ -230,6 +230,11 @@ code {
 
         <aside class="sidebar collapsed-right" id="sidebar-right">
             <h3 style="margin-bottom: 20px;">Einstellungen</h3>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <span>🌐 Internet-Suche</span>
+    <input type="checkbox" id="search-toggle">
+</div>
             
             <div class="setting-group">
                 <span class="setting-label">KI Modell</span>
@@ -526,6 +531,35 @@ function deleteChat(event, id) {
         localStorage.setItem("glame_v4_chats", JSON.stringify(allChats));
         localStorage.setItem("glame_v4_now", currentId);
     }
+
+    // 1. Prüfen, ob der Schalter an ist
+const searchActive = document.getElementById("search-toggle").checked;
+
+// 2. Das Payload-Objekt erstellen
+const payload = {
+    model: document.getElementById("model-select").value,
+    stream: true,
+    messages: [
+        { role: "system", content: "Du bist Glame Pro..." },
+        ...history,
+        { role: "user", content: text }
+    ]
+};
+
+// 3. DAS IST DER ENTSCHEIDENDE TEIL FÜR DIE SUCHE:
+if (searchActive) {
+    payload.tools = [{ "type": "browser_search" }];
+}
+
+// 4. Dann der Fetch-Aufruf wie gehabt
+const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { 
+        "Authorization": `Bearer ${API_KEY}`, 
+        "Content-Type": "application/json" 
+    },
+    body: JSON.stringify(payload)
+});
 </script>
 </body>
 </html>
