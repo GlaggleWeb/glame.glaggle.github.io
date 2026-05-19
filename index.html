@@ -263,6 +263,7 @@ code {
 
 <script>
     const API_KEY = "gsk_ImbDfvvSXzXJfw80" + "vZP5WGdyb3FYknkYv77z" + "RJZN3pfyA1PiRGWu";
+    let attachedImage = null; // Das hat gefehlt!
     let allChats = JSON.parse(localStorage.getItem("glame_v4_chats")) || {};
     let currentId = localStorage.getItem("glame_v4_now") || "chat_" + Date.now();
     let isTyping = false;
