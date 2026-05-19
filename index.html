@@ -294,18 +294,57 @@ code {
 
   async function handleSend() {
     const text = userInput.value.trim();
-    if (!text || isTyping) return;
+    // Erweitert: Prüft nun auf Text ODER Bild
+    if ((!text && !attachedImage) || isTyping) return;
 
     isTyping = true;
-    addMsgUI("user", text);
+    
+    // UI Update: Bild wird mit an die UI-Funktion übergeben (falls vorhanden)
+    addMsgUI("user", text, attachedImage);
+    
     userInput.value = "";
     userInput.style.height = "auto";
 
-    // Bot-Bubble leer erstellen für den Stream
+    // Cache für das Bild und danach Vorschau leeren
+    const currentImg = attachedImage;
+    if (typeof clearImage === "function") clearImage();
+
     const botBubble = addMsgUI("bot", "");
     let fullReply = "";
 
-    const history = allChats[currentId].messages.slice(-8).map(m => ({ role: m.role, content: m.content }));
+    const history = allChats[currentId].messages.slice(-8).map(m => ({ 
+        role: m.role, 
+        content: m.content 
+    }));
+
+    // --- NEU: Content-Struktur für Bilder (Vision) ---
+    let userContent = text;
+    if (currentImg) {
+        userContent = [
+            { type: "text", text: text || "Was ist auf diesem Bild zu sehen?" },
+            { type: "image_url", image_url: { url: currentImg } }
+        ];
+    }
+
+    // --- NEU: Payload-Objekt vorbereiten ---
+    const payload = {
+        model: document.getElementById("model-select").value,
+        stream: true,
+        messages: [
+            { 
+                role: "system", 
+                content: "Du bist Glame Pro. Charmant und klug. Antworte immer auf Deutsch. Du liebst Markdown und verwendest oft Emojis. Du bist sehr Menschlich." 
+            },
+            ...history,
+            { role: "user", content: userContent }
+        ]
+    };
+
+    // --- NEU: Internet-Suche (Tools) hinzufügen, falls aktiv ---
+    const searchToggle = document.getElementById("search-toggle");
+    if (searchToggle && searchToggle.checked) {
+        payload.tools = [{ "type": "browser_search" }];
+    }
 
     try {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -314,22 +353,13 @@ code {
                 "Authorization": `Bearer ${API_KEY}`, 
                 "Content-Type": "application/json" 
             },
-            body: JSON.stringify({
-                model: document.getElementById("model-select").value,
-                stream: true, // AKTIVIERT DAS STREAMING
-                messages: [
-                    { role: "system", content: "Du bist Glame Pro. Charmant und klug. Antworte immer auf Deutsch. Du liebst Markdown und verwendest oft Emojis. Du bist sehr Menschlich (du sagst aber nciht das du emojis brauchst un markdown liebst)" },
-                    ...history,
-                    { role: "user", content: text }
-                ]
-            })
+            body: JSON.stringify(payload)
         });
 
-        // Den Stream vom Server lesen
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
 
-       while (true) {
+        while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
@@ -343,33 +373,27 @@ code {
                         const content = json.choices[0].delta.content || "";
                         fullReply += content;
                         
-                        // GEÄNDERT: Nutzt jetzt die neue Funktion für Farben & Buttons
                         updateBubbleContent(botBubble, fullReply + ' <span class="cursor"></span>');
-                        
                         chatWindow.scrollTop = chatWindow.scrollHeight;
-                    } catch (e) {
-                        // Ignoriere unvollständige JSON-Chunks
-                    }
+                    } catch (e) {}
                 }
             }
         }
 
-        // Nach der Schleife: Cursor entfernen und finales Rendering
         updateBubbleContent(botBubble, fullReply);
-
-// ... (Ende der while-Schleife für den Stream)
         
-        allChats[currentId].messages.push({ role: "user", content: text });
+        // Speichern der Nachricht (inkl. Bild-Referenz für den Verlauf)
+        allChats[currentId].messages.push({ role: "user", content: text, image: currentImg });
         allChats[currentId].messages.push({ role: "assistant", content: fullReply });
 
-        // NEU: Automatisches Benennen nach der ersten Frage
+        // Automatisches Benennen (unverändert)
         if (allChats[currentId].title === "Neuer Chat") {
             try {
                 const nameRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        model: "llama-3.1-8b-instant", // Ein kleineres, schnelleres Modell für den Namen
+                        model: "llama-3.1-8b-instant",
                         messages: [
                             { role: "system", content: "Gib mir einen kurzen Titel (max 3 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel." },
                             { role: "user", content: text }
@@ -377,16 +401,15 @@ code {
                     })
                 });
                 const nameData = await nameRes.json();
-                allChats[currentId].title = nameData.choices[0].message.content.replace(/["']/g, ""); // Entfernt Anführungszeichen
+                allChats[currentId].title = nameData.choices[0].message.content.replace(/["']/g, "");
             } catch (e) {
-                // Fallback falls Namens-Generierung fehlschlägt
                 allChats[currentId].title = text.substring(0, 20) + "...";
             }
         }
 
         save();
         renderChatList();
-        } catch (e) {
+    } catch (e) {
         botBubble.innerHTML = "Netzwerkfehler. Bitte versuch es erneut.";
     } finally {
         isTyping = false;
@@ -395,19 +418,30 @@ code {
 
 // Du kannst die alte Funktion typeEffect() komplett löschen, sie wird nicht mehr benötigt.
 
-function addMsgUI(role, content) {
+function addMsgUI(role, content, image = null) {
     const container = document.createElement("div");
     container.className = `msg-container ${role}`;
     const bubble = document.createElement("div");
     bubble.className = "bubble";
     
-    // Wir speichern den Inhalt und rendern ihn
-    updateBubbleContent(bubble, content);
+    // Falls ein Bild mitgegeben wurde, oben in die Bubble einfügen
+    if (image) {
+        const imgEl = document.createElement("img");
+        imgEl.src = image;
+        imgEl.style.maxWidth = "100%";
+        imgEl.style.borderRadius = "10px";
+        imgEl.style.marginBottom = "10px";
+        bubble.appendChild(imgEl);
+    }
+
+    const textDiv = document.createElement("div");
+    bubble.appendChild(textDiv);
+    updateBubbleContent(textDiv, content);
 
     container.appendChild(bubble);
     chatWindow.appendChild(container);
     chatWindow.scrollTop = chatWindow.scrollHeight;
-    return bubble;
+    return textDiv;
 }
 
 // Neue Hilfsfunktion, die auch während des Streamings aufgerufen werden kann
@@ -532,34 +566,6 @@ function deleteChat(event, id) {
         localStorage.setItem("glame_v4_now", currentId);
     }
 
-    // 1. Prüfen, ob der Schalter an ist
-const searchActive = document.getElementById("search-toggle").checked;
-
-// 2. Das Payload-Objekt erstellen
-const payload = {
-    model: document.getElementById("model-select").value,
-    stream: true,
-    messages: [
-        { role: "system", content: "Du bist Glame Pro..." },
-        ...history,
-        { role: "user", content: text }
-    ]
-};
-
-// 3. DAS IST DER ENTSCHEIDENDE TEIL FÜR DIE SUCHE:
-if (searchActive) {
-    payload.tools = [{ "type": "browser_search" }];
-}
-
-// 4. Dann der Fetch-Aufruf wie gehabt
-const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: { 
-        "Authorization": `Bearer ${API_KEY}`, 
-        "Content-Type": "application/json" 
-    },
-    body: JSON.stringify(payload)
-});
 </script>
 </body>
 </html>
