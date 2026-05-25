@@ -359,7 +359,7 @@
             <div style="background: rgba(0, 127, 255, 0.1); border: 1px solid var(--primary); border-radius: 15px; padding: 15px; margin-top: 5px; margin-bottom: 5px;">
                 <p style="font-weight: bold; color: var(--primary); margin-bottom: 5px;">📌 WICHTIGE INFO</p>
                 <p style="font-size: 0.85rem; line-height: 1.4; color: var(--text-color);">
-                    Die Internet-Suche geht nur mit den GPT Modellen!
+                    Die Internet-Suche geht nur mit den GPT Modellen! Die Internet Suche ist nicht mit Deep Research kombinierbar!
                 </p>
             </div>
             
@@ -703,7 +703,7 @@ expertDraft = await generateExpertDraft(text);
 
 // HIER DIE EINFÜGUNG:
 if (expertDraft === null) { 
-    showErrorNotification("Das API-Limit ist erreicht oder die Recherche ist fehlgeschlagen.");
+    showErrorNotification("Dein Limit ist vorübergehend erreicht. Bitte warte ein paar Minuten!");
     isTyping = false;
     return; // Bricht die Funktion hier ab, damit es nicht weitergeht
 }
@@ -783,7 +783,7 @@ if (expertDraft === null) {
 // HIER DIE EINFÜGUNG:
 if (res.status === 429) {
     loadingIndicator.remove(); // Entfernt den Ladebalken
-    showErrorNotification("Das API-Limit ist erreicht. Bitte warte einen Moment.");
+    showErrorNotification("Dein Limit ist vorübergehend erreicht. Bitte warte ein paar Minuten!");
     isTyping = false;
     return; // Bricht hier ab
 }
