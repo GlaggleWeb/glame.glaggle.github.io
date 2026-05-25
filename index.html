@@ -685,14 +685,13 @@
         }
 
         try {
-           // Im Cloudflare Worker-Code:
-const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            // NEUEN CODE HIER EINFÜGEN
+const res = await fetch("https://muddy-union-8ccf.rhpjmf7t2s.workers.dev/", {
     method: "POST",
-    headers: {
-        "Authorization": `Bearer ${apiKey}`, // Hier wird er eingefügt!
-        "Content-Type": "application/json"
+    headers: { 
+        "Content-Type": "application/json" 
     },
-    body: request.body
+    body: JSON.stringify(payload)
 });
 
             loadingIndicator.remove();
