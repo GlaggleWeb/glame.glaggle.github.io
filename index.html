@@ -454,6 +454,15 @@
     sendBtn.onclick = handleSend;
     userInput.onkeydown = (e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }};
 
+
+    function showErrorNotification(msg) {
+    // Entfernt eventuelle Lade-Indikatoren, damit die UI sauber ist
+    const loader = document.querySelector(".loading-indicator");
+    if (loader) loader.remove();
+    
+    // Zeigt den Hinweis als Chat-Nachricht
+    addMsgUI("bot", `⚠️ **Info:** ${msg}`);
+}
     // ==========================================
     // BILD-SELEKTIONS-SYSTEM & AUTO MODEL SWITCH
     // ==========================================
@@ -642,21 +651,37 @@
         }
     }
 
-
 async function generateExpertDraft(userPrompt) {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
-            messages: [
-                { role: "system", content: "Du bist ein Experte für tiefgründige Recherche. Erstelle eine detaillierte, inhaltlich fundierte Antwort auf die Nutzerfrage. Sammle alle Fakten und Argumente, aber achte noch nicht auf den persönlichen Stil." },
-                { role: "user", content: userPrompt }
-            ]
-        })
-    });
-    const data = await res.json();
-    return data.choices[0].message.content;
+    try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { 
+                        role: "system", 
+                        content: "Du bist ein Experte für tiefgründige Recherche. Erstelle eine detaillierte, inhaltlich fundierte Antwort auf die Nutzerfrage. Sammle alle Fakten und Argumente, bleibe sachlich und präzise." 
+                    },
+                    { role: "user", content: userPrompt }
+                ]
+            })
+        });
+
+        if (res.status === 429) {
+            showErrorNotification("Dein Limit ist vorübergehend erreicht. Bitte warte ein paar Minuten!");
+            return null; // Stoppt den Ablauf sanft
+        }
+
+        // Sicherstellen, dass die Antwort auch wirklich erfolgreich war
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        return data.choices[0].message.content;
+    } catch (e) {
+        console.error("Fehler beim Generieren des Entwurfs:", e);
+        return null;
+    }
 }
     // ==========================================
     // CHAT ENGINE, TYPEWRITER EFFECT & UI
@@ -673,7 +698,15 @@ async function handleSend() {
     if (isDeepResearch) {
         addMsgUI("bot", "🧠 *Recherchiere und erstelle Experten-Entwurf...*");
         try {
-            expertDraft = await generateExpertDraft(text);
+            // ... direkt nach dem Aufruf von generateExpertDraft
+expertDraft = await generateExpertDraft(text);
+
+// HIER DIE EINFÜGUNG:
+if (expertDraft === null) { 
+    showErrorNotification("Das API-Limit ist erreicht oder die Recherche ist fehlgeschlagen.");
+    isTyping = false;
+    return; // Bricht die Funktion hier ab, damit es nicht weitergeht
+}
         } catch (e) {
             console.error("Research failed", e);
         }
@@ -744,6 +777,16 @@ async function handleSend() {
             },
             body: JSON.stringify(payload)
         });
+
+        // ... nach deinem try { ... const res = await fetch(...) }
+
+// HIER DIE EINFÜGUNG:
+if (res.status === 429) {
+    loadingIndicator.remove(); // Entfernt den Ladebalken
+    showErrorNotification("Das API-Limit ist erreicht. Bitte warte einen Moment.");
+    isTyping = false;
+    return; // Bricht hier ab
+}
 
         loadingIndicator.remove();
         const botBubble = addMsgUI("bot", "");
