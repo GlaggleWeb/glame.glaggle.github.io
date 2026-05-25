@@ -1,0 +1,752 @@
+  <!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glame AI Pro</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- APPWRITE SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@14.0.1"></script>
+    
+    <style>
+        /* --- KLASSISCHES GLAGGLE DESIGN --- */
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #202124;
+            --nav-bg: #ffffff;
+            --card-bg: #ffffff;
+            --card-border: #e8eaed;
+            --desc-color: #5f6368;
+            --input-bg: #ffffff;
+            --primary: #007FFF; /* Original Glaggle Blue */
+            --danger: #EA4335;
+            --glaggle-gradient: linear-gradient(135deg, #4285F4, #EA4335, #FBBC05, #34A853);
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-pill: 30px;
+            --shadow-sm: 0 2px 5px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 15px rgba(0, 127, 255, 0.15);
+            --shadow-hover: 0 10px 25px rgba(0, 127, 255, 0.25);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg-color: #202124;
+                --text-color: #e8eaed;
+                --nav-bg: #303134;
+                --card-bg: #303134;
+                --card-border: #444444;
+                --desc-color: #bdc1c6;
+                --input-bg: #3c4043;
+                --shadow-md: 0 4px 15px rgba(0,0,0,0.3);
+            }
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #202124;
+            --text-color: #e8eaed;
+            --nav-bg: #303134;
+            --card-bg: #303134;
+            --card-border: #444444;
+            --desc-color: #bdc1c6;
+            --input-bg: #3c4043;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Arial Rounded MT Bold', 'Segoe UI', sans-serif;
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh;
+            height: 100dvh; 
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* --- MOBILE OPTIMIERUNGEN --- */
+        @media (max-width: 768px) {
+            #chat-window { padding: 20px 5%; }
+            #input-wrapper { padding: 0 5% 20px 5%; }
+            .navbar { height: 60px; }
+            .nav-title { font-size: 16px; }
+            .sidebar { position: absolute; height: 100%; width: 80%; }
+        }
+
+        /* --- NAVBAR --- */
+        .navbar {
+            display: flex; align-items: center; justify-content: space-between;
+            height: 70px; background-color: var(--nav-bg); padding: 0 20px;
+            box-shadow: var(--shadow-sm); z-index: 1000; border-bottom: 1px solid var(--card-border);
+        }
+        .nav-btn {
+            background: none; border: none; color: var(--text-color);
+            font-size: 1.2rem; cursor: pointer; padding: 10px; border-radius: 50%;
+        }
+        .nav-btn:hover { background-color: var(--card-border); }
+        .nav-title { font-size: 20px; font-weight: bold; background: var(--glaggle-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .auth-controls { display: flex; align-items: center; gap: 10px; }
+        .btn-profile {
+            background: var(--card-border); border: none; color: var(--text-color);
+            padding: 8px 15px; border-radius: var(--radius-pill); font-weight: bold;
+            cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s;
+        }
+        .btn-profile:hover { background: var(--primary); color: white; }
+
+        /* --- LAYOUT --- */
+        .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .sidebar {
+            width: 300px; background-color: var(--nav-bg); display: flex; flex-direction: column;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; padding: 20px; overflow-y: auto;
+        }
+        #sidebar-left { border-right: 1px solid var(--card-border); }
+        #sidebar-right { border-left: 1px solid var(--card-border); }
+        .sidebar.collapsed-left { transform: translateX(-100%); position: absolute; height: 100%; }
+        .sidebar.collapsed-right { transform: translateX(100%); position: absolute; right: 0; height: 100%; }
+
+        .btn-new-chat {
+            background: var(--primary); color: white; border: none; padding: 12px;
+            border-radius: var(--radius-pill); font-weight: bold; cursor: pointer; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s;
+        }
+        .btn-new-chat:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+        /* --- CHAT AREA --- */
+        #main-chat { flex: 1; display: flex; flex-direction: column; background: var(--bg-color); min-width: 0; }
+        #chat-window { flex: 1; overflow-y: auto; padding: 40px 10%; display: flex; flex-direction: column; gap: 24px; }
+
+        .msg-container { display: flex; width: 100%; animation: fadeIn 0.4s ease; }
+        .msg-container.user { justify-content: flex-end; }
+        .bubble {
+            max-width: 80%; padding: 18px 24px; line-height: 1.6; font-size: 1rem; position: relative;
+        }
+        .user .bubble { background: var(--input-bg); border-radius: 24px 24px 4px 24px; border: 1px solid var(--card-border); box-shadow: var(--shadow-sm); }
+        .bot .bubble { background: var(--card-bg); border-radius: 24px 24px 24px 4px; border: 1px solid var(--card-border); box-shadow: var(--shadow-md); }
+        
+        .cursor { display: inline-block; width: 8px; height: 16px; background: var(--primary); margin-left: 2px; animation: blink 0.8s infinite; vertical-align: middle; }
+        @keyframes blink { 50% { opacity: 0; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- WELCOME SCREEN --- */
+        .welcome-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; text-align: center; animation: fadeIn 0.8s ease; margin-top: auto; margin-bottom: auto;
+        }
+        .welcome-screen h1 {
+            font-size: 2.5rem; background: var(--glaggle-gradient);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px;
+        }
+        .welcome-screen p { font-size: 1.2rem; color: var(--desc-color); }
+
+        /* --- INPUT --- */
+        #input-wrapper { padding: 0 10% 40px 10%; background: linear-gradient(to top, var(--bg-color) 70%, transparent); }
+        .search-bar-container {
+            display: flex; align-items: flex-end; background: var(--input-bg);
+            border: 1px solid var(--card-border); border-radius: var(--radius-pill);
+            padding: 8px 20px; box-shadow: var(--shadow-md); transition: 0.3s;
+        }
+        .search-bar-container:focus-within { border-color: var(--primary); box-shadow: var(--shadow-hover); }
+        #user-input { flex: 1; border: none; outline: none; padding: 12px 0; font-size: 1.1rem; background: transparent; color: var(--text-color); resize: none; max-height: 150px; font-family: inherit; }
+        
+        .icon-btn { background: none; border: none; cursor: pointer; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--desc-color); transition: 0.2s; }
+        .icon-btn:hover { background: var(--bg-color); color: var(--primary); }
+        #mic-btn.active { color: white; background: var(--danger); animation: pulseRed 1s infinite; }
+        @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(234,67,53, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(234,67,53, 0); } 100% { box-shadow: 0 0 0 0 rgba(234,67,53, 0); } }
+
+        /* --- EINSTELLUNGEN --- */
+        .setting-group { margin-bottom: 25px; }
+        .setting-label { font-size: 0.85rem; color: var(--desc-color); margin-bottom: 8px; display: block; font-weight: bold; }
+        select, .styled-input { width: 100%; background: var(--input-bg); border: 1px solid var(--card-border); color: var(--text-color); padding: 12px; border-radius: var(--radius-md); outline: none; }
+
+        /* --- CODE BOX STYLING --- */
+        pre { background: #1e1e1e !important; color: #dcdcdc; padding: 15px; border-radius: 12px; position: relative; margin: 15px 0; overflow-x: auto; border: 1px solid #444; }
+        code { font-family: 'Consolas', 'Monaco', monospace; font-size: 0.95rem; }
+        .copy-btn { position: absolute; top: 8px; right: 8px; background: rgba(255, 255, 255, 0.1); color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: 0.2s; }
+        .copy-btn:hover { background: var(--primary); }
+        .copy-btn.copied { background: #34A853; }
+        
+        /* --- MODAL (LOGIN/REG) --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center; z-index: 2000; backdrop-filter: blur(5px);
+        }
+        .modal-card {
+            background: var(--nav-bg); padding: 30px; border-radius: var(--radius-lg); width: 90%; max-width: 400px;
+            box-shadow: var(--shadow-hover); position: relative; display: flex; flex-direction: column; gap: 15px;
+        }
+        .modal-card h2 { margin-bottom: 10px; color: var(--text-color); text-align: center; }
+        .btn-primary {
+            background: var(--primary); color: white; border: none; padding: 12px; border-radius: var(--radius-md);
+            font-weight: bold; cursor: pointer; font-size: 1rem; margin-top: 10px; transition: 0.3s;
+        }
+        .btn-primary:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+    </style>
+</head>
+<body data-theme="auto">
+
+    <nav class="navbar">
+        <button class="nav-btn" onclick="toggleSidebar('sidebar-left')"><i class="fas fa-bars"></i></button>
+        <div class="nav-title">GLAME PRO</div>
+        <div class="auth-controls">
+            <button class="btn-profile" id="user-profile-btn" onclick="openAuthModal()">
+                <i class="fas fa-user-circle"></i> Login
+            </button>
+            <button class="nav-btn" onclick="toggleSidebar('sidebar-right')"><i class="fas fa-sliders-h"></i></button>
+        </div>
+    </nav>
+
+    <div class="app-container">
+        <aside class="sidebar collapsed-left" id="sidebar-left">
+            <button class="btn-new-chat" onclick="createNewChat()"><i class="fas fa-plus"></i> Neuer Chat</button>
+            <div id="chat-list"></div>
+        </aside>
+
+        <main id="main-chat">
+            <div id="chat-window"></div>
+
+            <div id="input-wrapper">
+                <div class="search-bar-container">
+                    <textarea id="user-input" placeholder="Frag Glame etwas..." rows="1"></textarea>
+                    <button class="icon-btn" id="mic-btn"><i class="fas fa-microphone"></i></button>
+                    <button class="icon-btn" id="send-btn" style="color: var(--primary)"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </main>
+
+        <aside class="sidebar collapsed-right" id="sidebar-right">
+            <h3 style="margin-bottom: 20px;">Einstellungen</h3>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <span>🌐 Internet-Suche</span>
+                <input type="checkbox" id="search-toggle">
+            </div>
+
+            <div style="background: rgba(0, 127, 255, 0.1); border: 1px solid var(--primary); border-radius: 15px; padding: 15px; margin-top: 5px; margin-bottom: 5px;">
+                <p style="font-weight: bold; color: var(--primary); margin-bottom: 5px;">📌 WICHTIGE INFO</p>
+                <p style="font-size: 0.85rem; line-height: 1.4; color: var(--text-color);">
+                    Die Internet-Suche geht nur mit den GPT Modellen!
+                </p>
+            </div>
+            
+            <div class="setting-group">
+                <span class="setting-label">KI Modell</span>
+                <select id="model-select">
+                    <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout (Neu)</option>
+                    <option value="llama-3.3-70b-versatile" selected>Llama 3.3 Versatile</option>
+                    <option value="llama-3.1-8b-instant">Llama 3.1 Instant</option>
+                    <option value="qwen/qwen3-32b">Qwen 3 32B</option>
+                    <option value="openai/gpt-oss-120b">GPT OSS 120B</option>
+                    <option value="openai/gpt-oss-20b">GPT OSS 20B</option>
+                    <option value="moonshotai/kimi-k2-instruct">Kimi K2 Instruct</option>
+                    <option value="allam-2-7b">Allam 2 7B</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <span class="setting-label">Erscheinungsbild</span>
+                <select id="theme-select">
+                    <option value="auto">System folgen</option>
+                    <option value="light">Hell</option>
+                    <option value="dark">Dunkel</option>
+                </select>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Login/Register Modal -->
+    <div id="auth-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <h2 id="auth-title">Login</h2>
+            <input type="email" id="auth-email" class="styled-input" placeholder="E-Mail">
+            <input type="password" id="auth-pass" class="styled-input" placeholder="Passwort">
+            <input type="text" id="auth-name" class="styled-input" placeholder="Benutzername (nur Registrierung)" style="display: none;">
+            <p id="auth-error" style="color: var(--danger); font-size: 0.85rem; margin-top: 5px;"></p>
+            <button class="btn-primary" onclick="submitAuth()">Los geht's</button>
+            <p id="auth-toggle-text" style="font-size: 0.85rem; text-align: center; margin-top: 15px; cursor: pointer; color: var(--primary);" onclick="toggleAuthMode()">Noch keinen Account? Registrieren</p>
+            <button class="icon-btn" style="position: absolute; top: 10px; right: 10px;" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+<script>
+    // ==========================================
+    // APPWRITE KONFIGURATION - HIER ANPASSEN!
+    // ==========================================
+    const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1'; // Dein Appwrite Endpoint
+    const APPWRITE_PROJECT = 'DEINE_PROJECT_ID'; // Z.B. '64abcd123456789'
+    const APPWRITE_DB = 'DEINE_DATABASE_ID'; 
+    const APPWRITE_COLL = 'DEINE_COLLECTION_ID'; 
+    // ACHTUNG: Die Collection benötigt folgende Attribute (als String): 
+    // userId, chatId, title, messages (großes String-Feld), timestamp (Integer)
+    // ==========================================
+
+    const { Client, Account, Databases, ID, Query } = Appwrite;
+    const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT);
+    const account = new Account(client);
+    const databases = new Databases(client);
+
+    let currentUser = null;
+    let isRegisterMode = false;
+
+    // --- Glame Pro Core Variables ---
+    const API_KEY = "gsk_ImbDfvvSXzXJfw80" + "vZP5WGdyb3FYknkYv77z" + "RJZN3pfyA1PiRGWu";
+    let attachedImage = null;
+    let allChats = JSON.parse(localStorage.getItem("glame_v4_chats")) || {};
+    let currentId = localStorage.getItem("glame_v4_now") || "chat_" + Date.now();
+    let isTyping = false;
+
+    const chatWindow = document.getElementById("chat-window");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const micBtn = document.getElementById("mic-btn");
+
+    // Init App
+    checkAuth(); // Checkt ob User eingeloggt ist, lädt dann ggf. Cloud-Chats
+    if (!allChats[currentId]) createNewChat();
+    
+    // Theme Logic
+    document.getElementById("theme-select").onchange = (e) => {
+        const val = e.target.value;
+        if(val === "auto") document.body.removeAttribute("data-theme");
+        else document.body.setAttribute("data-theme", val);
+        localStorage.setItem("glame_v4_theme", val);
+    };
+
+    userInput.addEventListener("input", function() {
+        this.style.height = "auto";
+        this.style.height = this.scrollHeight + "px";
+    });
+
+    sendBtn.onclick = handleSend;
+    userInput.onkeydown = (e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }};
+
+    // ==========================================
+    // APPWRITE AUTH & CLOUD SYNC LOGIC
+    // ==========================================
+    async function checkAuth() {
+        try {
+            currentUser = await account.get();
+            document.getElementById("user-profile-btn").innerHTML = `<i class="fas fa-sign-out-alt"></i> ${currentUser.name || 'Profil'}`;
+            document.getElementById("user-profile-btn").onclick = logout;
+            await loadChatsFromCloud();
+        } catch (e) {
+            currentUser = null;
+            document.getElementById("user-profile-btn").innerHTML = `<i class="fas fa-user-circle"></i> Login`;
+            document.getElementById("user-profile-btn").onclick = openAuthModal;
+        }
+        renderChatList();
+        renderMessages();
+    }
+
+    function openAuthModal() {
+        document.getElementById("auth-modal").style.display = "flex";
+        document.getElementById("auth-error").innerText = "";
+    }
+    function closeAuthModal() {
+        document.getElementById("auth-modal").style.display = "none";
+    }
+    function toggleAuthMode() {
+        isRegisterMode = !isRegisterMode;
+        document.getElementById("auth-title").innerText = isRegisterMode ? "Registrieren" : "Login";
+        document.getElementById("auth-name").style.display = isRegisterMode ? "block" : "none";
+        document.getElementById("auth-toggle-text").innerText = isRegisterMode ? "Bereits einen Account? Login" : "Noch keinen Account? Registrieren";
+    }
+
+    async function submitAuth() {
+        const email = document.getElementById("auth-email").value;
+        const pass = document.getElementById("auth-pass").value;
+        const name = document.getElementById("auth-name").value;
+        const errorEl = document.getElementById("auth-error");
+
+        if(!email || !pass) return errorEl.innerText = "Bitte fülle alle Felder aus.";
+
+        try {
+            if (isRegisterMode) {
+                await account.create(ID.unique(), email, pass, name);
+                await account.createEmailPasswordSession(email, pass);
+            } else {
+                await account.createEmailPasswordSession(email, pass);
+            }
+            closeAuthModal();
+            await checkAuth(); // Session laden
+        } catch (e) {
+            errorEl.innerText = e.message;
+        }
+    }
+
+    async function logout() {
+        try {
+            await account.deleteSession('current');
+            currentUser = null;
+            checkAuth();
+        } catch (e) { console.error("Logout Error", e); }
+    }
+
+    async function loadChatsFromCloud() {
+        if (!currentUser) return;
+        try {
+            const response = await databases.listDocuments(APPWRITE_DB, APPWRITE_COLL, [
+                Query.equal('userId', currentUser.$id)
+            ]);
+            
+            let loadedSomething = false;
+            response.documents.forEach(doc => {
+                // Nur Chats in LocalStorage laden, wenn sie aktueller/neu sind
+                if (!allChats[doc.chatId] || allChats[doc.chatId].date < doc.timestamp) {
+                    allChats[doc.chatId] = {
+                        title: doc.title,
+                        messages: JSON.parse(doc.messages),
+                        date: doc.timestamp
+                    };
+                    loadedSomething = true;
+                }
+            });
+
+            if (loadedSomething) {
+                saveLocally();
+                if (!allChats[currentId]) currentId = Object.keys(allChats)[0] || "chat_" + Date.now();
+            }
+        } catch (e) {
+            console.log("Konnte Chats nicht aus der Cloud laden (evtl. nicht konfiguriert).", e);
+        }
+    }
+
+    async function syncChatsToCloud() {
+        if (!currentUser) return;
+        
+        // Die 3 neusten Chats ermitteln
+        const chatIds = Object.keys(allChats).sort((a,b) => allChats[b].date - allChats[a].date).slice(0, 3);
+        
+        try {
+            const response = await databases.listDocuments(APPWRITE_DB, APPWRITE_COLL, [
+                Query.equal('userId', currentUser.$id)
+            ]);
+
+            const existingDocs = {};
+            response.documents.forEach(doc => existingDocs[doc.chatId] = doc.$id);
+
+            // 1. Updaten oder Erstellen der Top 3
+            for (const id of chatIds) {
+                const data = {
+                    userId: currentUser.$id,
+                    chatId: id,
+                    title: allChats[id].title,
+                    messages: JSON.stringify(allChats[id].messages),
+                    timestamp: allChats[id].date
+                };
+
+                if (existingDocs[id]) {
+                    await databases.updateDocument(APPWRITE_DB, APPWRITE_COLL, existingDocs[id], data);
+                    delete existingDocs[id]; // Erledigt
+                } else {
+                    await databases.createDocument(APPWRITE_DB, APPWRITE_COLL, ID.unique(), data);
+                }
+            }
+
+            // 2. Alle alten Chats in der Cloud löschen (die nicht in den Top 3 sind)
+            for (const docId of Object.values(existingDocs)) {
+                await databases.deleteDocument(APPWRITE_DB, APPWRITE_COLL, docId);
+            }
+        } catch (e) {
+            console.log("Cloud Sync Fehlgeschlagen. Stelle sicher, dass die Appwrite IDs korrekt sind.", e);
+        }
+    }
+
+    // ==========================================
+    // CHAT LOGIK & UI RENDERING
+    // ==========================================
+
+    async function handleSend() {
+        const text = userInput.value.trim();
+        if ((!text && !attachedImage) || isTyping) return;
+
+        isTyping = true;
+        addMsgUI("user", text, attachedImage);
+        
+        userInput.value = "";
+        userInput.style.height = "auto";
+
+        const currentImg = attachedImage;
+        if (typeof clearImage === "function") clearImage();
+
+        const botBubble = addMsgUI("bot", "");
+        let fullReply = "";
+
+        const history = allChats[currentId].messages.slice(-8).map(m => ({ 
+            role: m.role, 
+            content: m.content 
+        }));
+
+        let userContent = text;
+        if (currentImg) {
+            userContent = [
+                { type: "text", text: text || "Was ist auf diesem Bild zu sehen?" },
+                { type: "image_url", image_url: { url: currentImg } }
+            ];
+        }
+
+        const payload = {
+            model: document.getElementById("model-select").value,
+            stream: true,
+            messages: [
+                { 
+                    role: "system", 
+                    content: "Du bist Glame Pro. Charmant und klug. Antworte immer auf Deutsch. Du liebst Markdown und verwendest oft Emojis. Du bist sehr Menschlich." 
+                },
+                ...history,
+                { role: "user", content: userContent }
+            ]
+        };
+
+        const searchToggle = document.getElementById("search-toggle");
+        if (searchToggle && searchToggle.checked) {
+            payload.tools = [{ "type": "browser_search" }];
+        }
+
+        try {
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: { 
+                    "Authorization": `Bearer ${API_KEY}`, 
+                    "Content-Type": "application/json" 
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split("\n");
+
+                for (const line of lines) {
+                    if (line.startsWith("data: ") && line !== "data: [DONE]") {
+                        try {
+                            const json = JSON.parse(line.substring(6));
+                            const content = json.choices[0].delta.content || "";
+                            fullReply += content;
+                            
+                            updateBubbleContent(botBubble, fullReply + ' <span class="cursor"></span>');
+                            chatWindow.scrollTop = chatWindow.scrollHeight;
+                        } catch (e) {}
+                    }
+                }
+            }
+
+            updateBubbleContent(botBubble, fullReply);
+            
+            allChats[currentId].messages.push({ role: "user", content: text, image: currentImg });
+            allChats[currentId].messages.push({ role: "assistant", content: fullReply });
+            allChats[currentId].date = Date.now(); // Update timestamp
+
+            if (allChats[currentId].title === "Neuer Chat") {
+                try {
+                    const nameRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                        method: "POST",
+                        headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            model: "llama-3.1-8b-instant",
+                            messages: [
+                                { role: "system", content: "Gib mir einen kurzen Titel (max 3 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel." },
+                                { role: "user", content: text }
+                            ]
+                        })
+                    });
+                    const nameData = await nameRes.json();
+                    allChats[currentId].title = nameData.choices[0].message.content.replace(/["']/g, "");
+                } catch (e) {
+                    allChats[currentId].title = text.substring(0, 20) + "...";
+                }
+            }
+
+            saveLocally();
+            syncChatsToCloud(); // Nachricht ist fertig -> Cloud Update (Max 3)
+            renderChatList();
+        } catch (e) {
+            botBubble.innerHTML = "Netzwerkfehler. Bitte versuch es erneut.";
+        } finally {
+            isTyping = false;
+        }
+    }
+
+    function addMsgUI(role, content, image = null) {
+        // Falls wir den Welcome Screen haben, entferne ihn bei der ersten Nachricht
+        const welcome = document.querySelector(".welcome-screen");
+        if(welcome) welcome.remove();
+
+        const container = document.createElement("div");
+        container.className = `msg-container ${role}`;
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        
+        if (image) {
+            const imgEl = document.createElement("img");
+            imgEl.src = image;
+            imgEl.style.maxWidth = "100%";
+            imgEl.style.borderRadius = "10px";
+            imgEl.style.marginBottom = "10px";
+            bubble.appendChild(imgEl);
+        }
+
+        const textDiv = document.createElement("div");
+        bubble.appendChild(textDiv);
+        updateBubbleContent(textDiv, content);
+
+        container.appendChild(bubble);
+        chatWindow.appendChild(container);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        return textDiv;
+    }
+
+    function updateBubbleContent(bubble, content) {
+        bubble.innerHTML = marked.parse(content);
+        
+        if (window.Prism) Prism.highlightAllUnder(bubble);
+        
+        bubble.querySelectorAll('pre').forEach(block => {
+            if (block.querySelector('.copy-btn')) return; 
+
+            const btn = document.createElement('button');
+            btn.className = 'copy-btn';
+            btn.innerHTML = '<i class="fas fa-copy"></i> Kopieren';
+            
+            btn.onclick = () => {
+                const code = block.querySelector('code').innerText;
+                navigator.clipboard.writeText(code).then(() => {
+                    btn.innerHTML = '<i class="fas fa-check"></i> Kopiert!';
+                    btn.classList.add('copied');
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="fas fa-copy"></i> Kopieren';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                });
+            };
+            block.appendChild(btn);
+        });
+    }
+
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (Speech) {
+        const rec = new Speech();
+        rec.lang = "de-DE";
+        rec.onstart = () => micBtn.classList.add("active");
+        rec.onend = () => micBtn.classList.remove("active");
+        rec.onresult = (e) => { userInput.value = e.results[0][0].transcript; handleSend(); };
+        micBtn.onclick = () => { try { rec.start(); } catch(e) { rec.stop(); }};
+    }
+
+    function createNewChat() {
+        currentId = "chat_" + Date.now();
+        allChats[currentId] = { title: "Neuer Chat", messages: [], date: Date.now() };
+        saveLocally();
+        syncChatsToCloud();
+        renderChatList();
+        renderMessages();
+    }
+
+    function renderMessages() {
+        chatWindow.innerHTML = "";
+        const msgs = allChats[currentId].messages || [];
+
+        if (msgs.length === 0) {
+            // === PERSÖNLICHE BEGRÜSSUNG ===
+            const greetingDiv = document.createElement("div");
+            greetingDiv.className = "welcome-screen";
+
+            const hour = new Date().getHours();
+            let timeMsg = "Guten Tag";
+            if (hour >= 5 && hour < 12) timeMsg = "Guten Morgen";
+            else if (hour >= 18 || hour < 5) timeMsg = "Guten Abend";
+
+            const name = currentUser ? currentUser.name : "Gast";
+            
+            greetingDiv.innerHTML = `
+                <h1>${timeMsg}, ${name}!</h1>
+                <p>Was steht heute an?</p>
+            `;
+            chatWindow.appendChild(greetingDiv);
+        } else {
+            msgs.forEach(m => addMsgUI(m.role, m.content));
+        }
+    }
+
+    function renderChatList() {
+        const list = document.getElementById("chat-list");
+        list.innerHTML = "";
+        Object.keys(allChats).sort((a, b) => allChats[b].date - allChats[a].date).forEach(id => {
+            const item = document.createElement("div");
+            item.className = "chat-slot";
+            item.style.display = "flex";
+            item.style.justifyContent = "space-between";
+            item.style.alignItems = "center";
+            item.style.padding = "10px 15px";
+            item.style.cursor = "pointer";
+            item.style.borderRadius = "12px";
+            item.style.marginBottom = "8px";
+            item.style.background = id === currentId ? "rgba(0,127,255,0.15)" : "transparent";
+            item.style.color = id === currentId ? "var(--primary)" : "var(--text-color)";
+
+            item.innerHTML = `
+                <div onclick="selectChat('${id}')" style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <i class="fas fa-comment"></i> ${allChats[id].title}
+                </div>
+                <i class="fas fa-trash-alt delete-icon" onclick="deleteChat(event, '${id}')" style="margin-left:10px; opacity:0.5; transition:0.3s;"></i>
+            `;
+            
+            const trash = item.querySelector('.delete-icon');
+            trash.onmouseover = () => trash.style.color = "var(--danger)";
+            trash.onmouseout = () => trash.style.color = "inherit";
+
+            list.appendChild(item);
+        });
+    }
+
+    function selectChat(id) {
+        currentId = id;
+        saveLocally();
+        renderMessages();
+        renderChatList();
+    }
+
+    function deleteChat(event, id) {
+        event.stopPropagation();
+        if (confirm("Chat wirklich löschen?")) {
+            delete allChats[id];
+            const remainingIds = Object.keys(allChats);
+            if (remainingIds.length > 0) {
+                currentId = remainingIds[remainingIds.length - 1];
+            } else {
+                createNewChat();
+                return; // createNewChat ruft saveLocally & Cloud Sync bereits auf
+            }
+            saveLocally();
+            syncChatsToCloud();
+            renderMessages();
+            renderChatList();
+        }
+    }
+
+    function toggleSidebar(id) {
+        document.getElementById(id).classList.toggle(id === 'sidebar-left' ? 'collapsed-left' : 'collapsed-right');
+    }
+
+    function saveLocally() {
+        localStorage.setItem("glame_v4_chats", JSON.stringify(allChats));
+        localStorage.setItem("glame_v4_now", currentId);
+    }
+
+</script>
+</body>
+</html>
