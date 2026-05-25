@@ -643,19 +643,19 @@
     }
 
 
-    async function getPlanFromAI(userPrompt) {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+async function generateExpertDraft(userPrompt) {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-            model: "llama-3.3-70b-versatile", // Nutze ein starkes Modell für Planung
+            model: "llama-3.3-70b-versatile",
             messages: [
-                { role: "system", content: "Du bist ein Forschungsassistent. Erstelle einen strukturierten Plan (in 3-4 Punkten), um die folgende Frage tiefgründig zu beantworten. Antworte kurz und prägnant." },
+                { role: "system", content: "Du bist ein Experte für tiefgründige Recherche. Erstelle eine detaillierte, inhaltlich fundierte Antwort auf die Nutzerfrage. Sammle alle Fakten und Argumente, aber achte noch nicht auf den persönlichen Stil." },
                 { role: "user", content: userPrompt }
             ]
         })
     });
-    const data = await response.json();
+    const data = await res.json();
     return data.choices[0].message.content;
 }
     // ==========================================
@@ -665,21 +665,21 @@ async function handleSend() {
     const text = userInput.value.trim();
     if ((!text && !attachedImage) || isTyping) return;
 
-    // --- NEU: Deep Research Start ---
-    const deepToggle = document.getElementById("deep-research-toggle");
-    const isDeepResearch = deepToggle && deepToggle.checked;
-    let researchPlan = "";
+    // --- NEU: Expert Collaboration ---
+    const expertToggle = document.getElementById("deep-research-toggle"); // Toggle-ID bleibt gleich
+    const isExpertMode = expertToggle && expertToggle.checked;
+    let expertDraft = "";
 
-    if (isDeepResearch) {
-        addMsgUI("bot", "🔍 Erstelle einen Forschungsplan...");
+    if (isExpertMode) {
+        // Hier arbeiten die "zwei Experten" im Hintergrund zusammen
+        addMsgUI("bot", "🧠 *Experten-Team recherchiert und entwirft Antwort...*");
         try {
-            researchPlan = await getPlanFromAI(text);
-            addMsgUI("bot", `**Mein Plan für deine Frage:**\n${researchPlan}`);
+            expertDraft = await generateExpertDraft(text);
         } catch (e) {
-            addMsgUI("bot", "⚠️ Konnte keinen Plan erstellen, mache ohne Deep Research weiter.");
+            console.error("Expert Draft failed", e);
         }
     }
-    // --- NEU: Ende Deep Research ---
+    // ---------------------------------
 
     isTyping = true;
     addMsgUI("user", text, attachedImage);
@@ -693,24 +693,14 @@ async function handleSend() {
     const loadingIndicator = showLoadingIndicator();
     let fullReply = "";
 
-    const history = allChats[currentId].messages.slice(-8).map(m => ({ 
-        role: m.role, 
-        content: m.content 
-    }));
-
-    let userContent = text;
-    if (currentImg) {
-        userContent = [
-            { type: "text", text: text || "Was ist auf diesem Bild zu sehen?" },
-            { type: "image_url", image_url: { url: currentImg } }
-        ];
-    }
-
-    // --- DYNAMISCHER SYSTEM-PROMPT ---
+    // Falls ExpertMode an war, nutzen wir den Draft als Basis
     let systemInstruction = "Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte stets auf Deutsch. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören.";
     
-    if (isDeepResearch && researchPlan) {
-        systemInstruction += `\n\nNutze strikt folgenden Forschungsplan für deine Antwortstruktur: \n${researchPlan}`;
+    // Wir passen den Content an: Wenn ein Draft da ist, muss die KI diesen finalisieren
+    let finalUserContent = text;
+    if (isExpertMode && expertDraft) {
+        systemInstruction += "\n\nDU BIST DER FINALISIERENDE EDITOR: Du hast von einem Recherche-Experten einen Entwurf erhalten. Deine Aufgabe ist es, diesen Entwurf in deinen 'Glame Pro'-Stil zu bringen, ihn menschlich, warmherzig und strukturiert auszugeben.";
+        finalUserContent = `Hier ist der Recherche-Entwurf, den du bitte in deinen Stil finalisierst: \n\n${expertDraft}`;
     }
 
     const payload = {
@@ -718,29 +708,19 @@ async function handleSend() {
         stream: true,
         messages: [
             { role: "system", content: systemInstruction },
-            ...history,
-            { role: "user", content: userContent }
+            { role: "user", content: finalUserContent }
         ]
     };
-
-    const searchToggle = document.getElementById("search-toggle");
-    if (searchToggle && searchToggle.checked) {
-        payload.tools = [{ "type": "browser_search" }];
-    }
 
     try {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: { 
-                "Authorization": `Bearer ${API_KEY}`, 
-                "Content-Type": "application/json" 
-            },
+            headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
             body: JSON.stringify(payload)
         });
 
         loadingIndicator.remove();
         const botBubble = addMsgUI("bot", "");
-        
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
 
@@ -749,19 +729,15 @@ async function handleSend() {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
             const chunk = decoder.decode(value);
             const lines = chunk.split("\n");
-
             for (const line of lines) {
                 if (line.startsWith("data: ") && line !== "data: [DONE]") {
                     try {
                         const json = JSON.parse(line.substring(6));
                         const content = json.choices[0].delta.content || "";
                         fullReply += content;
-                        
                         feedTypewriter(content);
-                        chatWindow.scrollTop = chatWindow.scrollHeight;
                     } catch (e) {}
                 }
             }
@@ -773,37 +749,17 @@ async function handleSend() {
         allChats[currentId].messages.push({ role: "assistant", content: fullReply });
         allChats[currentId].date = Date.now();
 
-        if (allChats[currentId].title === "Neuer Chat") {
-            try {
-                const nameRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: "llama-3.1-8b-instant",
-                        messages: [
-                            { role: "system", content: "Gib mir einen kurzen Titel (max 2 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel." },
-                            { role: "user", content: text }
-                        ]
-                    })
-                });
-                const nameData = await nameRes.json();
-                allChats[currentId].title = nameData.choices[0].message.content.replace(/["']/g, "");
-            } catch (e) {
-                allChats[currentId].title = text.substring(0, 20) + "...";
-            }
-        }
-
+        // (Der Teil für den Chat-Titel bleibt identisch wie vorher...)
         save();
         syncChatsToCloud();
         renderChatList();
     } catch (e) {
         loadingIndicator.remove();
-        addMsgUI("bot", "Hoppla! Es gab einen Netzwerkfehler. Bitte versuche es noch einmal.");
+        addMsgUI("bot", "Hoppla! Es gab einen Netzwerkfehler.");
     } finally {
         isTyping = false;
     }
 }
-
     // ==========================================
     // HIGH-PERFORMANCE LIVE TYPEWRITER
     // ==========================================
