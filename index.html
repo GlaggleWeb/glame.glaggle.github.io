@@ -685,14 +685,15 @@
         }
 
         try {
-            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                method: "POST",
-                headers: { 
-                    "Authorization": `Bearer ${API_KEY}`, 
-                    "Content-Type": "application/json" 
-                },
-                body: JSON.stringify(payload)
-            });
+           // Im Cloudflare Worker-Code:
+const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+        "Authorization": `Bearer ${apiKey}`, // Hier wird er eingefügt!
+        "Content-Type": "application/json"
+    },
+    body: request.body
+});
 
             loadingIndicator.remove();
             const botBubble = addMsgUI("bot", "");
