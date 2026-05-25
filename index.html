@@ -737,7 +737,7 @@
                         body: JSON.stringify({
                             model: "llama-3.1-8b-instant",
                             messages: [
-                                { role: "system", content: "Gib mir einen kurzen Titel (max 3 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel." },
+                                { role: "system", content: "Gib mir einen kurzen Titel (max 2 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel." },
                                 { role: "user", content: text }
                             ]
                         })
@@ -924,7 +924,7 @@
             else if (hour >= 18 && hour < 23) baseGreeting = "Guten Abend";
             else baseGreeting = "Späte Grüße";
 
-            const displayName = glaggleProfile ? glaggleProfile.userName : (currentUser ? currentUser.name : "Glaggle-Gast");
+            const displayName = glaggleProfile ? glaggleProfile.userName : (currentUser ? currentUser.name : "Glame AI Pro-Gast");
 
             const dynamicPhrases = [
                 "Was steht heute Aufregendes auf deinem Plan? 🌟",
