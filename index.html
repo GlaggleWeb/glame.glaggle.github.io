@@ -665,21 +665,20 @@ async function handleSend() {
     const text = userInput.value.trim();
     if ((!text && !attachedImage) || isTyping) return;
 
-    // --- NEU: Expert Collaboration ---
-    const expertToggle = document.getElementById("deep-research-toggle"); // Toggle-ID bleibt gleich
-    const isExpertMode = expertToggle && expertToggle.checked;
+    // --- DEEP RESEARCH START ---
+    const researchToggle = document.getElementById("deep-research-toggle");
+    const isDeepResearch = researchToggle && researchToggle.checked;
     let expertDraft = "";
 
-    if (isExpertMode) {
-        // Hier arbeiten die "zwei Experten" im Hintergrund zusammen
-        addMsgUI("bot", "🧠 *Experten-Team recherchiert und entwirft Antwort...*");
+    if (isDeepResearch) {
+        addMsgUI("bot", "🧠 *Recherchiere und erstelle Experten-Entwurf...*");
         try {
             expertDraft = await generateExpertDraft(text);
         } catch (e) {
-            console.error("Expert Draft failed", e);
+            console.error("Research failed", e);
         }
     }
-    // ---------------------------------
+    // --- DEEP RESEARCH ENDE ---
 
     isTyping = true;
     addMsgUI("user", text, attachedImage);
@@ -688,39 +687,67 @@ async function handleSend() {
     userInput.style.height = "auto";
 
     const currentImg = attachedImage;
-    clearImage(); 
+    clearImage(); // Leert die Vorschau nach dem Senden
 
     const loadingIndicator = showLoadingIndicator();
     let fullReply = "";
 
-    // Falls ExpertMode an war, nutzen wir den Draft als Basis
-    let systemInstruction = "Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte stets auf Deutsch. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören.";
-    
-    // Wir passen den Content an: Wenn ein Draft da ist, muss die KI diesen finalisieren
-    let finalUserContent = text;
-    if (isExpertMode && expertDraft) {
-        systemInstruction += "\n\nDU BIST DER FINALISIERENDE EDITOR: Du hast von einem Recherche-Experten einen Entwurf erhalten. Deine Aufgabe ist es, diesen Entwurf in deinen 'Glame Pro'-Stil zu bringen, ihn menschlich, warmherzig und strukturiert auszugeben.";
-        finalUserContent = `Hier ist der Recherche-Entwurf, den du bitte in deinen Stil finalisierst: \n\n${expertDraft}`;
+    // Hier bleibt dein Original-History-Handling exakt wie gehabt
+    const history = allChats[currentId].messages.slice(-8).map(m => ({ 
+        role: m.role, 
+        content: m.content 
+    }));
+
+    let userContent = text;
+    if (currentImg) {
+        userContent = [
+            { type: "text", text: text || "Was ist auf diesem Bild zu sehen?" },
+            { type: "image_url", image_url: { url: currentImg } }
+        ];
+    }
+
+    // Wenn Deep Research aktiv war, injizieren wir den Entwurf in den userContent
+    if (isDeepResearch && expertDraft) {
+        const researchPrompt = `\n\n[Experten-Recherche zum Thema: ${expertDraft}]`;
+        if (typeof userContent === 'string') {
+            userContent += researchPrompt;
+        } else {
+            userContent.push({ type: "text", text: researchPrompt });
+        }
     }
 
     const payload = {
         model: document.getElementById("model-select").value,
         stream: true,
         messages: [
-            { role: "system", content: systemInstruction },
-            { role: "user", content: finalUserContent }
+            { 
+                role: "system", 
+                content: "Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte stets auf Deutsch. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören." 
+            },
+            ...history, // Original History bleibt erhalten
+            { role: "user", content: userContent }
         ]
     };
+
+    // Websearch Integration (dein Originalcode)
+    const searchToggle = document.getElementById("search-toggle");
+    if (searchToggle && searchToggle.checked) {
+        payload.tools = [{ "type": "browser_search" }];
+    }
 
     try {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+            headers: { 
+                "Authorization": `Bearer ${API_KEY}`, 
+                "Content-Type": "application/json" 
+            },
             body: JSON.stringify(payload)
         });
 
         loadingIndicator.remove();
         const botBubble = addMsgUI("bot", "");
+        
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
 
@@ -729,15 +756,19 @@ async function handleSend() {
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
+
             const chunk = decoder.decode(value);
             const lines = chunk.split("\n");
+
             for (const line of lines) {
                 if (line.startsWith("data: ") && line !== "data: [DONE]") {
                     try {
                         const json = JSON.parse(line.substring(6));
                         const content = json.choices[0].delta.content || "";
                         fullReply += content;
+                        
                         feedTypewriter(content);
+                        chatWindow.scrollTop = chatWindow.scrollHeight;
                     } catch (e) {}
                 }
             }
@@ -749,13 +780,32 @@ async function handleSend() {
         allChats[currentId].messages.push({ role: "assistant", content: fullReply });
         allChats[currentId].date = Date.now();
 
-        // (Der Teil für den Chat-Titel bleibt identisch wie vorher...)
+        if (allChats[currentId].title === "Neuer Chat") {
+            try {
+                const nameRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        model: "llama-3.1-8b-instant",
+                        messages: [
+                            { role: "system", content: "Gib mir einen kurzen Titel (max 2 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel." },
+                            { role: "user", content: text }
+                        ]
+                    })
+                });
+                const nameData = await nameRes.json();
+                allChats[currentId].title = nameData.choices[0].message.content.replace(/["']/g, "");
+            } catch (e) {
+                allChats[currentId].title = text.substring(0, 20) + "...";
+            }
+        }
+
         save();
         syncChatsToCloud();
         renderChatList();
     } catch (e) {
         loadingIndicator.remove();
-        addMsgUI("bot", "Hoppla! Es gab einen Netzwerkfehler.");
+        addMsgUI("bot", "Hoppla! Es gab einen Netzwerkfehler. Bitte versuche es noch einmal.");
     } finally {
         isTyping = false;
     }
