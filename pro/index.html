@@ -1615,9 +1615,11 @@ async function handleSend() {
     };
 
     if (useSearch) payload.tools = [{ type: "browser_search" }];
+    // FIX: Entfernt eventuelle doppelte Slashes am Ende der Basis-URL automatisch
+    const cleanAiUrl = WORKER_AI_URL.endsWith('/') ? WORKER_AI_URL.slice(0, -1) : WORKER_AI_URL;
 
     try {
-        const res = await fetch(`${WORKER_AI_URL}/chat`, {
+        const res = await fetch(`${cleanAiUrl}/chat`, { // Jetzt garantiert fehlerfrei /chat
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -1631,6 +1633,9 @@ async function handleSend() {
         }
 
         if (!res.ok) throw new Error("API Fehler " + res.status);
+        
+        // ... ab hier bleibt dein restlicher Streaming-Code exakt gleich
+
 
         loadingEl.remove();
         const botEl = addMsgUI("bot", "");
