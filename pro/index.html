@@ -1615,8 +1615,6 @@ async function handleSend() {
     };
 
     if (useSearch) payload.tools = [{ type: "browser_search" }];
-    // FIX: Entfernt eventuelle doppelte Slashes am Ende der Basis-URL automatisch
-    const cleanAiUrl = WORKER_AI_URL.endsWith('/') ? WORKER_AI_URL.slice(0, -1) : WORKER_AI_URL;
 
     // FIX: Schützt vor Doppel-Slashes am Ende der URL
     const cleanAiUrl = WORKER_AI_URL.endsWith('/') ? WORKER_AI_URL.slice(0, -1) : WORKER_AI_URL;
@@ -1639,11 +1637,7 @@ async function handleSend() {
         }
 
         if (!res.ok) throw new Error("API Fehler " + res.status);
-        
-        // ... ab hier bleibt dein restlicher Streaming-Code gleich
 
-        
-        // ... ab hier bleibt dein restlicher Streaming-Code exakt gleich
 
 
         loadingEl.remove();
