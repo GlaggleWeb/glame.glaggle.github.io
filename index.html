@@ -368,13 +368,10 @@
             <div class="setting-group">
                 <span class="setting-label">KI Modell</span>
                 <select id="model-select">
-                    <option value="meta-llama/llama-4-scout-17b-16e-instruct">Llama 4 Scout (Neu)</option>
-                    <option value="llama-3.3-70b-versatile" selected>Llama 3.3 Versatile</option>
                     <option value="llama-3.1-8b-instant">Llama 3.1 Instant</option>
-                    <option value="qwen/qwen3-32b">Qwen 3 32B</option>
+                    <option value="qwen/qwen3.6-27b">Qwen 3.6 27B</option>
                     <option value="openai/gpt-oss-120b">GPT OSS 120B</option>
                     <option value="openai/gpt-oss-20b">GPT OSS 20B</option>
-                    <option value="moonshotai/kimi-k2-instruct">Kimi K2 Instruct</option>
                     <option value="allam-2-7b">Allam 2 7B</option>
                 </select>
             </div>
@@ -482,7 +479,7 @@
 
             // AUTO-SWITCH ZU LLAMA 4 SCOUT WENN BILD HINZUGEFÜGT WIRD
             const modelSelect = document.getElementById("model-select");
-            modelSelect.value = "meta-llama/llama-4-scout-17b-16e-instruct";
+            modelSelect.value = "qwen/qwen3.6-27b";
             
             // Kurzes, leuchtendes Feedback im UI, damit der User den Wechsel bemerkt
             modelSelect.style.boxShadow = "0 0 15px var(--primary)";
