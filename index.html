@@ -838,7 +838,7 @@ if (expertDraft === null) {
         messages: [
             { 
                 role: "system", 
-                content: "Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte stets auf Deutsch. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören." 
+                content: "Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte stets auf Deutsch. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören. WICHTIG: Wenn das Thema deiner Antwort sich gut mit einem Bild veranschaulichen lässt (nur bei ca. 20-50% der Antworten, wenn es wirklich sinnvoll ist, z.B. bei Orten, Tieren, Personen, Objekten, historischen Ereignissen), dann füge GANZ AM ENDE deiner Antwort in einer neuen Zeile exakt folgendes Format hinzu: [IMG: kurzer englischer Suchbegriff]. Bei reinen Text-/Code-/abstrakten Themen lass das komplett weg." 
             },
             ...history, // Original History bleibt erhalten
             { role: "user", content: userContent }
@@ -901,6 +901,22 @@ if (res.status === 429) {
         }
 
         await flushTypewriter(fullReply);
+
+// Bild-Tag erkennen und entfernen
+const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/i);
+if (imgMatch) {
+    const searchTerm = imgMatch[1].trim();
+    const cleanedReply = fullReply.replace(/\[IMG:\s*.+?\]\s*$/i, "").trim();
+    
+    // Bubble-Text ohne das Tag neu rendern
+    updateBubbleContent(currentTypingElement, cleanedReply);
+    
+    // Wikimedia-Bild holen und anhängen
+    fetchWikimediaImage(searchTerm, currentTypingElement);
+    
+    // gespeicherter Chat-Text auch ohne Tag
+    fullReply = cleanedReply;
+}
         
         allChats[currentId].messages.push({ role: "user", content: text, image: currentImg });
         allChats[currentId].messages.push({ role: "assistant", content: fullReply });
@@ -1197,6 +1213,39 @@ if (res.status === 429) {
         localStorage.setItem("glame_v4_chats", JSON.stringify(allChats));
         localStorage.setItem("glame_v4_now", currentId);
     }
+
+    async function fetchWikimediaImage(query, bubbleElement) {
+    try {
+        const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&format=json&origin=*&srlimit=1`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+
+        if (!searchData.query.search.length) return;
+
+        const fileTitle = searchData.query.search[0].title; // z.B. "File:Eiffel_Tower.jpg"
+
+        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url&format=json&origin=*`;
+        const infoRes = await fetch(infoUrl);
+        const infoData = await infoRes.json();
+
+        const pages = infoData.query.pages;
+        const page = Object.values(pages)[0];
+        if (!page.imageinfo) return;
+
+        const imageUrl = page.imageinfo[0].url;
+
+        const wrapper = document.createElement("div");
+        wrapper.style.marginTop = "15px";
+        wrapper.innerHTML = `
+            <img src="${imageUrl}" style="max-width:100%; border-radius:12px; box-shadow: var(--shadow-sm);" alt="${query}">
+            <p style="font-size:0.75rem; color: var(--desc-color); margin-top:6px;">Quelle: Wikimedia Commons</p>
+        `;
+        bubbleElement.appendChild(wrapper);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    } catch (e) {
+        console.warn("Wikimedia-Bildsuche fehlgeschlagen:", e);
+    }
+}
 
 </script>
 </body>
