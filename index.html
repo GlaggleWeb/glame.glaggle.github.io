@@ -1215,8 +1215,6 @@ if (imgMatch) {
     }
 async function fetchWikimediaImage(query, bubbleElement) {
     try {
-        // WICHTIG: Setzen Sie hier Ihre echte E-Mail-Adresse ein!
-        // Ohne diesen Header blockiert Wikimedia Ihre Nutzer sehr schnell (HTTP 403)
         const headers = {
             "Api-User-Agent": "Glame AI Pro/1.0 (https://glaggle.ch; info@glaggle.ch)"
         };
@@ -1226,35 +1224,47 @@ async function fetchWikimediaImage(query, bubbleElement) {
         const searchRes = await fetch(searchUrl, { headers });
         const searchData = await searchRes.json();
 
-        if (!searchData.query.search.length) return;
+        if (!searchData.query || !searchData.query.search || !searchData.query.search.length) return;
 
-        const fileTitle = searchData.query.search[0].title; // z.B. "File:Anna_Wintour.jpg"
+        const fileTitle = searchData.query.search[0].title;
 
-        // 2. Thumbnail-Grösse (iiurlwidth=500) und Metadaten anfordern
-        // Dadurch erhalten wir die erlaubte "thumburl" anstelle der gesperrten Original-URL
+        // 2. Thumbnail-Grösse, Metadaten und Beschreibungs-URL anfordern
         const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500&format=json&origin=*`;
         const infoRes = await fetch(infoUrl, { headers });
         const infoData = await infoRes.json();
 
         const pages = infoData.query.pages;
-        const page = Object.values(pages)[0];
-        if (!page.imageinfo) return;
+        if (!pages) return;
 
-        // WICHTIG: .thumburl nutzen, NICHT .url
+        const page = Object.values(pages)[0];
+        if (!page || !page.imageinfo || !page.imageinfo.length) return;
+
+        // Nutzen der erlaubten Thumbnail-URL
         const imageUrl = page.imageinfo[0].thumburl || page.imageinfo[0].url;
+        
+        // Rechtssicherer Link zur Wikimedia-Original-Beschreibungsseite
+        const descriptionUrl = page.imageinfo[0].descriptionurl || `https://wikimedia.org{encodeURIComponent(fileTitle)}`;
+        
         const meta = page.imageinfo[0].extmetadata || {};
 
-        // HTML-Tags aus dem Autorennamen filtern (Wikimedia liefert dort oft HTML-Links)
+        // HTML aus Autor filtern
         const author = meta.Artist ? meta.Artist.value.replace(/<[^>]*>/g, "").trim() : "Unbekannt";
         const license = meta.LicenseShortName ? meta.LicenseShortName.value : "Freie Lizenz";
 
-        // 3. Element im Chat anzeigen
+        // Sauber formatiertes Datei-Label für die Anzeige (entfernt "File:" / "Datei:")
+        const displayTitle = fileTitle.replace(/^(File:|Datei:)/i, "");
+
+        // 3. Element im Chat mit funktionierenden Links anzeigen
         const wrapper = document.createElement("div");
         wrapper.style.marginTop = "15px";
         wrapper.innerHTML = `
-            <img src="${imageUrl}" style="max-width:100%; border-radius:12px; box-shadow: var(--shadow-sm);" alt="${query}">
-            <p style="font-size:0.75rem; color: var(--desc-color); margin-top:6px; line-height: 1.3;">
-                Foto: ${author} · Lizenz: ${license} · Quelle: Wikimedia Commons
+            <a href="${descriptionUrl}" target="_blank" rel="noopener noreferrer" style="display: block; line-height: 0;">
+                <img src="${imageUrl}" style="max-width:100%; border-radius:12px; box-shadow: var(--shadow-sm); cursor: pointer;" alt="${query}">
+            </a>
+            <p style="font-size:0.75rem; color: var(--desc-color); margin-top:6px; line-height: 1.4;">
+                <strong>Bild:</strong> <a href="${descriptionUrl}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayTitle}</a><br>
+                <strong>Foto:</strong> ${author} · 
+                <strong>Lizenz:</strong> <a href="${descriptionUrl}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${license}</a> (via Wikimedia Commons)
             </p>
         `;
         bubbleElement.appendChild(wrapper);
@@ -1266,6 +1276,7 @@ async function fetchWikimediaImage(query, bubbleElement) {
         console.warn("Wikimedia-Bildsuche fehlgeschlagen:", e);
     }
 }
+
 
 
 </script>
