@@ -387,21 +387,40 @@
         </aside>
     </div>
 
-    <!-- Login Modal -->
-    <div id="auth-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-card">
+<!-- Login Modal -->
+<div id="auth-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+
+        <!-- Schritt 1: Link anfordern -->
+        <div id="auth-step1">
             <h2>Glaggle Login</h2>
-            <p class="sub">Melde dich mit deinen Glaggle Account-Daten an.</p>
-            <input type="email" id="auth-email" class="styled-input" placeholder="E-Mail Adresse">
-            <input type="password" id="auth-pass" class="styled-input" placeholder="Passwort">
+            <p class="sub">Gib deinen Benutzernamen oder deine E-Mail ein.</p>
+            <input type="text" id="auth-identifier" class="styled-input" placeholder="Benutzername oder E-Mail">
             <p id="auth-error" style="color: var(--danger); font-size: 0.85rem; text-align: center; min-height: 20px;"></p>
             <div class="loading-spinner" id="auth-spinner"></div>
-            <button class="btn-primary" id="btn-login" onclick="submitAuth()">Anmelden</button>
-            <button class="icon-btn" style="position: absolute; top: 12px; right: 12px;" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
+            <button class="btn-primary" id="btn-login" onclick="requestLoginLink()">Login-Link anfordern</button>
         </div>
+
+        <!-- Schritt 2: Bestätigen (wenn Magic Link angeklickt wurde) -->
+        <div id="auth-step-confirm" style="display: none;">
+            <h2>Fast da!</h2>
+            <p class="sub">Klicke, um deine Anmeldung zu bestätigen.</p>
+            <div class="loading-spinner" id="confirm-spinner"></div>
+            <button class="btn-primary" onclick="confirmLoginLink()">Anmeldung bestätigen ✓</button>
+        </div>
+
+        <button class="icon-btn" style="position: absolute; top: 12px; right: 12px;" onclick="closeAuthModal()"><i class="fas fa-times"></i></button>
     </div>
+</div>
 
 <script>
+    // Magic Link Callback direkt beim Laden abfangen
+(function checkMagicLinkCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('userId') && urlParams.get('secret')) {
+        openAuthModal(); // öffnet automatisch im Bestätigungs-Schritt
+    }
+})();
     // --- APPWRITE CONFIG (Gekoppelt mit deiner bestehenden DB) ---
     const client = new Appwrite.Client()
         .setEndpoint('https://cloud.appwrite.io/v1')
@@ -541,35 +560,102 @@
         document.getElementById("auth-modal").style.display = "none";
     }
 
-    async function submitAuth() {
-        const email = document.getElementById("auth-email").value.trim();
-        const pass = document.getElementById("auth-pass").value;
-        const errorEl = document.getElementById("auth-error");
-        const spinner = document.getElementById("auth-spinner");
-        const btn = document.getElementById("btn-login");
+    function openAuthModal() {
+    document.getElementById("auth-modal").style.display = "flex";
+    document.getElementById("auth-error").innerText = "";
+    document.getElementById("auth-identifier").value = "";
 
-        if(!email || !pass) return errorEl.innerText = "Bitte fülle alle Felder aus.";
+    // Prüfen ob gerade ein Magic Link Callback in der URL ist
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId');
+    const secret = urlParams.get('secret');
 
-        errorEl.innerText = "";
-        spinner.style.display = "block";
-        btn.disabled = true;
-
-        try {
-            // LOGIN ZUERST AUSFÜHREN! (Behebt den Berechtigungsfehler bei Appwrite)
-            await account.createEmailPasswordSession(email, pass);
-            
-            // Nach erfolgreichem Login schließen wir das Fenster und laden die Daten
-            closeAuthModal();
-            await checkAuth();
-        } catch (e) {
-            // Fehlgeschlagener Login (Falsches Passwort / Email)
-            errorEl.innerText = "Login fehlgeschlagen. Überprüfe E-Mail und Passwort.";
-            console.error("Login Error:", e.message);
-        } finally {
-            spinner.style.display = "none";
-            btn.disabled = false;
-        }
+    if (userId && secret) {
+        document.getElementById("auth-step1").style.display = "none";
+        document.getElementById("auth-step-confirm").style.display = "block";
+    } else {
+        document.getElementById("auth-step1").style.display = "block";
+        document.getElementById("auth-step-confirm").style.display = "none";
     }
+}
+
+function closeAuthModal() {
+    document.getElementById("auth-modal").style.display = "none";
+}
+
+async function requestLoginLink() {
+    const errorEl = document.getElementById("auth-error");
+    const spinner = document.getElementById("auth-spinner");
+    const btn = document.getElementById("btn-login");
+    const input = document.getElementById("auth-identifier").value.trim();
+
+    errorEl.innerText = "";
+    if (!input) { errorEl.innerText = "Bitte gib einen Benutzernamen oder eine E-Mail ein."; return; }
+
+    spinner.style.display = "block";
+    btn.disabled = true;
+    let targetEmail = "";
+
+    try {
+        if (input.includes('@')) {
+            targetEmail = input;
+        } else {
+            const response = await databases.listDocuments(DB_ID, COLL_ACCOUNTS, [
+                Appwrite.Query.equal('userName', input)
+            ]);
+            if (response.documents.length > 0) {
+                targetEmail = response.documents[0].userEmail;
+            } else {
+                throw new Error("Konto wurde nicht gefunden.");
+            }
+        }
+
+        try { await account.deleteSession('current'); } catch(e) {}
+
+        const userId = Appwrite.ID.unique();
+        await account.createMagicURLToken(userId, targetEmail, window.location.href);
+
+        errorEl.style.color = "#34A853";
+        errorEl.innerText = "E-Mail versendet! Bitte prüfe dein Postfach.";
+        btn.disabled = true;
+        btn.innerText = "Link gesendet...";
+
+    } catch (error) {
+        errorEl.style.color = "var(--danger)";
+        errorEl.innerText = "Fehler: " + error.message;
+        btn.disabled = false;
+    } finally {
+        spinner.style.display = "none";
+    }
+}
+
+async function confirmLoginLink() {
+    const spinner = document.getElementById("confirm-spinner");
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('userId');
+    const secret = urlParams.get('secret');
+
+    if (!userId || !secret) {
+        document.getElementById("auth-error").innerText = "Ungültiger oder abgelaufener Link.";
+        return;
+    }
+
+    spinner.style.display = "block";
+
+    try {
+        try { await account.deleteSession('current'); } catch(e) {}
+        await account.updateMagicURLSession(userId, secret);
+
+        window.history.replaceState({}, document.title, window.location.pathname);
+        closeAuthModal();
+        await checkAuth();
+
+    } catch (error) {
+        document.getElementById("auth-error").innerText = "Link ungültig oder abgelaufen.";
+    } finally {
+        spinner.style.display = "none";
+    }
+}
 
     async function logout() {
         if(confirm("Möchtest du dich abmelden? Deine lokalen Chats bleiben erhalten.")) {
