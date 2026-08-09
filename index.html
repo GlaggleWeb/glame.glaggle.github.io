@@ -1215,43 +1215,58 @@ if (imgMatch) {
     }
 async function fetchWikimediaImage(query, bubbleElement) {
     try {
+        // WICHTIG: Setzen Sie hier Ihre echte E-Mail-Adresse ein!
+        // Ohne diesen Header blockiert Wikimedia Ihre Nutzer sehr schnell (HTTP 403)
+        const headers = {
+            "Api-User-Agent": "Glame AI Pro/1.0 (https://glaggle.ch; info@glaggle.ch)"
+        };
+
+        // 1. Suche nach dem passenden Dateinamen
         const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&format=json&origin=*&srlimit=1`;
-        const searchRes = await fetch(searchUrl);
+        const searchRes = await fetch(searchUrl, { headers });
         const searchData = await searchRes.json();
 
         if (!searchData.query.search.length) return;
 
         const fileTitle = searchData.query.search[0].title; // z.B. "File:Anna_Wintour.jpg"
 
-        // extmetadata hier zusätzlich mit anfragen
-        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url|extmetadata&format=json&origin=*`;
-        const infoRes = await fetch(infoUrl);
+        // 2. Thumbnail-Grösse (iiurlwidth=500) und Metadaten anfordern
+        // Dadurch erhalten wir die erlaubte "thumburl" anstelle der gesperrten Original-URL
+        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500&format=json&origin=*`;
+        const infoRes = await fetch(infoUrl, { headers });
         const infoData = await infoRes.json();
 
         const pages = infoData.query.pages;
         const page = Object.values(pages)[0];
         if (!page.imageinfo) return;
 
-        const imageUrl = page.imageinfo[0].url;
+        // WICHTIG: .thumburl nutzen, NICHT .url
+        const imageUrl = page.imageinfo[0].thumburl || page.imageinfo[0].url;
         const meta = page.imageinfo[0].extmetadata || {};
 
-        const author = meta.Artist ? meta.Artist.value.replace(/<[^>]*>/g, "") : "Unbekannt";
-        const license = meta.LicenseShortName ? meta.LicenseShortName.value : "";
+        // HTML-Tags aus dem Autorennamen filtern (Wikimedia liefert dort oft HTML-Links)
+        const author = meta.Artist ? meta.Artist.value.replace(/<[^>]*>/g, "").trim() : "Unbekannt";
+        const license = meta.LicenseShortName ? meta.LicenseShortName.value : "Freie Lizenz";
 
+        // 3. Element im Chat anzeigen
         const wrapper = document.createElement("div");
         wrapper.style.marginTop = "15px";
         wrapper.innerHTML = `
             <img src="${imageUrl}" style="max-width:100%; border-radius:12px; box-shadow: var(--shadow-sm);" alt="${query}">
-            <p style="font-size:0.75rem; color: var(--desc-color); margin-top:6px;">
-                Foto: ${author} · ${license} · Quelle: Wikimedia Commons
+            <p style="font-size:0.75rem; color: var(--desc-color); margin-top:6px; line-height: 1.3;">
+                Foto: ${author} · Lizenz: ${license} · Quelle: Wikimedia Commons
             </p>
         `;
         bubbleElement.appendChild(wrapper);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
+        
+        if (typeof chatWindow !== "undefined") {
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
     } catch (e) {
         console.warn("Wikimedia-Bildsuche fehlgeschlagen:", e);
     }
 }
+
 
 </script>
 </body>
