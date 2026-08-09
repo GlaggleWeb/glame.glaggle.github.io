@@ -393,8 +393,7 @@
 
         <!-- Schritt 1: Link anfordern -->
         <div id="auth-step1">
-            <h2>Glaggle Login</h2>
-            <p class="sub">Gib deinen Benutzernamen oder deine E-Mail ein.</p>
+            <h2>Glaggle Email Login</h2>
             <input type="text" id="auth-identifier" class="styled-input" placeholder="Benutzername oder E-Mail">
             <p id="auth-error" style="color: var(--danger); font-size: 0.85rem; text-align: center; min-height: 20px;"></p>
             <div class="loading-spinner" id="auth-spinner"></div>
@@ -404,7 +403,6 @@
         <!-- Schritt 2: Bestätigen (wenn Magic Link angeklickt wurde) -->
         <div id="auth-step-confirm" style="display: none;">
             <h2>Fast da!</h2>
-            <p class="sub">Klicke, um deine Anmeldung zu bestätigen.</p>
             <div class="loading-spinner" id="confirm-spinner"></div>
             <button class="btn-primary" onclick="confirmLoginLink()">Anmeldung bestätigen ✓</button>
         </div>
