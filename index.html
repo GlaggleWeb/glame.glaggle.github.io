@@ -1213,15 +1213,15 @@ if (imgMatch) {
         localStorage.setItem("glame_v4_chats", JSON.stringify(allChats));
         localStorage.setItem("glame_v4_now", currentId);
     }
+    
 async function fetchWikimediaImage(query, bubbleElement) {
     try {
-        const headers = {
-            "Api-User-Agent": "Glame AI Pro/1.0 (https://glaggle.ch; info@glaggle.ch)"
-        };
+        // User-Agent im Query-String integriert, um CORS-Preflight-Probleme im Browser zu vermeiden
+        const projectAgent = "Glame_AI_Pro_1.0_(https_glaggle_ch;_info_glaggle_ch)";
 
         // 1. Suche nach dem passenden Dateinamen
-        const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&format=json&origin=*&srlimit=1`;
-        const searchRes = await fetch(searchUrl, { headers });
+        const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&format=json&origin=*&srlimit=1&useragent=${projectAgent}`;
+        const searchRes = await fetch(searchUrl);
         const searchData = await searchRes.json();
 
         if (!searchData.query || !searchData.query.search || !searchData.query.search.length) return;
@@ -1229,8 +1229,8 @@ async function fetchWikimediaImage(query, bubbleElement) {
         const fileTitle = searchData.query.search[0].title;
 
         // 2. Thumbnail-Grösse, Metadaten und Beschreibungs-URL anfordern
-        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500&format=json&origin=*`;
-        const infoRes = await fetch(infoUrl, { headers });
+        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500&format=json&origin=*&useragent=${projectAgent}`;
+        const infoRes = await fetch(infoUrl);
         const infoData = await infoRes.json();
 
         const pages = infoData.query.pages;
@@ -1242,13 +1242,15 @@ async function fetchWikimediaImage(query, bubbleElement) {
         // Nutzen der erlaubten Thumbnail-URL
         const imageUrl = page.imageinfo[0].thumburl || page.imageinfo[0].url;
         
-        // Rechtssicherer Link zur Wikimedia-Original-Beschreibungsseite
+        // Korrigierter Fallback-Link zur Wikimedia-Original-Beschreibungsseite
         const descriptionUrl = page.imageinfo[0].descriptionurl || `https://wikimedia.org{encodeURIComponent(fileTitle)}`;
         
         const meta = page.imageinfo[0].extmetadata || {};
 
-        // HTML aus Autor filtern
-        const author = meta.Artist ? meta.Artist.value.replace(/<[^>]*>/g, "").trim() : "Unbekannt";
+        // HTML aus Autor filtern und Fallback verbessern
+        let author = meta.Artist ? meta.Artist.value.replace(/<[^>]*>/g, "").trim() : "Unbekannt";
+        if (!author || author.length > 100) author = "Unbekannt"; // Verhindert gesprengte Layouts durch ellenlange Lizenztexte im Artist-Feld
+
         const license = meta.LicenseShortName ? meta.LicenseShortName.value : "Freie Lizenz";
 
         // Sauber formatiertes Datei-Label für die Anzeige (entfernt "File:" / "Datei:")
@@ -1259,7 +1261,7 @@ async function fetchWikimediaImage(query, bubbleElement) {
         wrapper.style.marginTop = "15px";
         wrapper.innerHTML = `
             <a href="${descriptionUrl}" target="_blank" rel="noopener noreferrer" style="display: block; line-height: 0;">
-                <img src="${imageUrl}" style="max-width:100%; border-radius:12px; box-shadow: var(--shadow-sm); cursor: pointer;" alt="${query}">
+                <img src="${imageUrl}" style="max-width:100%; border-radius:12px; box-shadow: var(--shadow-sm); cursor: pointer;" alt="${query.replace(/"/g, '&quot;')}">
             </a>
             <p style="font-size:0.75rem; color: var(--desc-color); margin-top:6px; line-height: 1.4;">
                 <strong>Bild:</strong> <a href="${descriptionUrl}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${displayTitle}</a><br>
@@ -1276,8 +1278,6 @@ async function fetchWikimediaImage(query, bubbleElement) {
         console.warn("Wikimedia-Bildsuche fehlgeschlagen:", e);
     }
 }
-
-
 
 </script>
 </body>
