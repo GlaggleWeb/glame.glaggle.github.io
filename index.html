@@ -301,7 +301,7 @@
 
     <nav class="navbar">
         <button class="nav-btn" onclick="toggleSidebar('sidebar-left')"><i class="fas fa-bars"></i></button>
-        <div class="nav-title">GLAME PRO</div>
+        <link rel="icon" type="image/png" href="glamelogo.png">
         <div class="auth-controls">
             <button class="btn-profile" id="user-profile-btn" onclick="openAuthModal()">
                 <i class="fas fa-user-circle"></i> Login
@@ -836,7 +836,11 @@ if (expertDraft === null) {
         messages: [
             { 
                 role: "system", 
-                content: "Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte stets auf Deutsch. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören. WICHTIG: Wenn das Thema deiner Antwort sich gut mit einem Bild veranschaulichen lässt (nur bei ca. 20-50% der Antworten, wenn es wirklich sinnvoll ist, z.B. bei Orten, Tieren, Personen, Objekten, historischen Ereignissen), füge GANZ AM ENDE deiner Antwort in einer EIGENEN, LETZTEN Zeile GENAU folgendes Format hinzu, OHNE Punkt oder sonstige Zeichen danach: [IMG: kurzer englischer Suchbegriff] . Bei reinen Text-/Code-/abstrakten Themen lass das komplett weg." 
+                content: "Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte stets auf Deutsch. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören. WICHTIG: Wenn das Thema deiner Antwort sich gut mit einem Bild veranschaulichen lässt (nur bei ca. 20-50% der Antworten, wenn es wirklich sinnvoll ist, z.B. bei Orten, Tieren, Personen, Objekten, historischen Ereignissen), füge GANZ AM ENDE deiner Antwort in einer EIGENEN, LETZTEN Zeile GENAU folgendes Format hinzu, OHNE Punkt oder sonstige Zeichen danach: [IMG: kurzer englischer Suchbegriff] . Bei reinen Text-/Code-/abstrakten Themen lass das komplett weg. Wenn es sinnvolle, naheliegende Folgefragen gibt (nur bei ca. 40-50% der Antworten, wenn wirklich hilfreich), füge GANZ AM ENDE (nach einem eventuellen [IMG:]-Tag) eine EIGENE, LETZTE Zeile hinzu im Format: [SUGGEST: Frage 1 | Frage 2 | Frage 3] mit 2-3 kurzen, prägnanten Folgefragen aus Sicht des Users. Bei einfachen/abgeschlossenen Antworten lass das komplett weg. Wenn der User explizit nach einem Quiz, Test oder Fragen zum Üben fragt, antworte NUR mit einem Block im Format:
+[QUIZ]
+{"title": "Titel des Quiz", "questions": [{"q": "Frage 1?", "options": ["A", "B", "C", "D"], "correct": 0}, {"q": "Frage 2?", "options": ["A", "B", "C", "D"], "correct": 2}]}
+[/QUIZ]
+Erstelle 5 Fragen mit je 4 Antwortmöglichkeiten, "correct" ist der Index (0-3) der richtigen Antwort. Kein Text davor oder danach, nur den Block." 
             },
             ...history, // Original History bleibt erhalten
             { role: "user", content: userContent }
@@ -900,6 +904,14 @@ if (res.status === 429) {
 
         await flushTypewriter(fullReply);
 
+// NEU: Quiz erkennen und rendern (hat Vorrang, IMG/SUGGEST werden dann übersprungen)
+const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
+
+if (!isQuiz) {
+    // Bild-Tag erkennen und entfernen
+    const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/i);
+    // ... (Rest wie gehabt, unverändert)
+}
 // Bild-Tag erkennen und entfernen
 const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/i);
 if (imgMatch) {
@@ -914,6 +926,24 @@ if (imgMatch) {
     
     // gespeicherter Chat-Text auch ohne Tag
     fullReply = cleanedReply;
+}
+
+// Bild-Tag erkennen und entfernen
+const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/i);
+if (imgMatch) {
+    const searchTerm = imgMatch[1].trim();
+    const cleanedReply = fullReply.replace(/\[IMG:\s*.+?\]\s*$/i, "").trim();
+    updateBubbleContent(currentTypingElement, cleanedReply);
+    fetchWikimediaImage(searchTerm, currentTypingElement);
+    fullReply = cleanedReply;
+}
+
+// NEU: Suggestion-Tag erkennen und entfernen
+const { cleanedText: replyWithoutSuggestions, suggestions } = parseSuggestions(fullReply);
+if (suggestions.length) {
+    updateBubbleContent(currentTypingElement, replyWithoutSuggestions);
+    renderSuggestions(suggestions, currentTypingElement);
+    fullReply = replyWithoutSuggestions;
 }
         
         allChats[currentId].messages.push({ role: "user", content: text, image: currentImg });
@@ -1277,6 +1307,131 @@ async function fetchWikimediaImage(query, bubbleElement) {
     }
 }
 
+function parseSuggestions(text) {
+    const match = text.match(/\[SUGGEST:\s*(.+?)\]\s*$/i);
+    if (!match) return { cleanedText: text, suggestions: [] };
+    
+    const suggestions = match[1].split("|").map(s => s.trim()).filter(Boolean);
+    const cleanedText = text.replace(/\[SUGGEST:\s*.+?\]\s*$/i, "").trim();
+    return { cleanedText, suggestions };
+}
+
+function renderSuggestions(suggestions, bubbleElement) {
+    if (!suggestions.length) return;
+    
+    const wrapper = document.createElement("div");
+    wrapper.style.marginTop = "15px";
+    wrapper.style.display = "flex";
+    wrapper.style.flexWrap = "wrap";
+    wrapper.style.gap = "8px";
+    
+    suggestions.forEach(q => {
+        const chip = document.createElement("button");
+        chip.textContent = q;
+        chip.style.cssText = `
+            background: var(--input-bg); border: 1px solid var(--primary);
+            color: var(--primary); padding: 8px 16px; border-radius: var(--radius-pill);
+            font-size: 0.85rem; cursor: pointer; transition: 0.2s; font-family: inherit;
+        `;
+        chip.onmouseover = () => { chip.style.background = "var(--primary)"; chip.style.color = "white"; };
+        chip.onmouseout = () => { chip.style.background = "var(--input-bg)"; chip.style.color = "var(--primary)"; };
+        chip.onclick = () => {
+            userInput.value = q;
+            handleSend();
+        };
+        wrapper.appendChild(chip);
+    });
+    
+    bubbleElement.appendChild(wrapper);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function parseAndRenderQuiz(text, bubbleElement) {
+    const match = text.match(/\[QUIZ\]([\s\S]*?)\[\/QUIZ\]/i);
+    if (!match) return false;
+
+    let quizData;
+    try {
+        quizData = JSON.parse(match[1].trim());
+    } catch (e) {
+        console.error("Quiz-Parsing fehlgeschlagen", e);
+        return false;
+    }
+
+    bubbleElement.innerHTML = "";
+    const quizWrapper = document.createElement("div");
+    quizWrapper.style.cssText = "display:flex; flex-direction:column; gap:20px;";
+
+    const title = document.createElement("h3");
+    title.textContent = "🧠 " + quizData.title;
+    title.style.color = "var(--primary)";
+    quizWrapper.appendChild(title);
+
+    const userAnswers = new Array(quizData.questions.length).fill(null);
+
+    quizData.questions.forEach((q, qIndex) => {
+        const qBlock = document.createElement("div");
+        qBlock.style.cssText = "background:var(--bg-color); border:1px solid var(--card-border); border-radius:var(--radius-md); padding:16px;";
+
+        const qText = document.createElement("p");
+        qText.textContent = `${qIndex + 1}. ${q.q}`;
+        qText.style.cssText = "font-weight:bold; margin-bottom:12px;";
+        qBlock.appendChild(qText);
+
+        const optsWrapper = document.createElement("div");
+        optsWrapper.style.cssText = "display:flex; flex-direction:column; gap:8px;";
+
+        q.options.forEach((opt, oIndex) => {
+            const optBtn = document.createElement("button");
+            optBtn.textContent = opt;
+            optBtn.style.cssText = `
+                text-align:left; padding:10px 14px; border-radius:10px;
+                border:1px solid var(--card-border); background:var(--input-bg);
+                color:var(--text-color); cursor:pointer; transition:0.2s; font-family:inherit;
+            `;
+            optBtn.onclick = () => {
+                if (userAnswers[qIndex] !== null) return; // schon beantwortet
+                userAnswers[qIndex] = oIndex;
+
+                const allOptBtns = optsWrapper.querySelectorAll('button');
+                allOptBtns.forEach((b, i) => {
+                    b.style.cursor = "default";
+                    if (i === q.correct) {
+                        b.style.background = "#34A853";
+                        b.style.color = "white";
+                        b.style.borderColor = "#34A853";
+                    } else if (i === oIndex) {
+                        b.style.background = "var(--danger)";
+                        b.style.color = "white";
+                        b.style.borderColor = "var(--danger)";
+                    }
+                });
+
+                checkQuizComplete();
+            };
+            optsWrapper.appendChild(optBtn);
+        });
+
+        qBlock.appendChild(optsWrapper);
+        quizWrapper.appendChild(qBlock);
+    });
+
+    const resultBox = document.createElement("div");
+    resultBox.style.cssText = "display:none; font-weight:bold; text-align:center; padding:16px; border-radius:var(--radius-md); background:rgba(0,127,255,0.1); color:var(--primary);";
+    quizWrapper.appendChild(resultBox);
+
+    function checkQuizComplete() {
+        if (userAnswers.every(a => a !== null)) {
+            const correctCount = userAnswers.filter((a, i) => a === quizData.questions[i].correct).length;
+            resultBox.style.display = "block";
+            resultBox.textContent = `🎉 Du hast ${correctCount} von ${quizData.questions.length} richtig!`;
+        }
+    }
+
+    bubbleElement.appendChild(quizWrapper);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return true;
+}
 </script>
 </body>
 </html>
