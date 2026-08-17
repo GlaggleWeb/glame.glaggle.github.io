@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Glame AI Pro</title>
+    <link rel="icon" type="image/png" href="glamelogo.png">
 
     <meta name="description" content="Chatte mit Glame AI Pro kostenlos und ohne Login wähle zwischen über 5 KI Modellen aus!">
 
@@ -299,16 +300,16 @@
 </head>
 <body data-theme="auto">
 
-    <nav class="navbar">
-        <button class="nav-btn" onclick="toggleSidebar('sidebar-left')"><i class="fas fa-bars"></i></button>
-        <link rel="icon" type="image/png" href="glamelogo.png">
-        <div class="auth-controls">
-            <button class="btn-profile" id="user-profile-btn" onclick="openAuthModal()">
-                <i class="fas fa-user-circle"></i> Login
-            </button>
-            <button class="nav-btn" onclick="toggleSidebar('sidebar-right')"><i class="fas fa-sliders-h"></i></button>
-        </div>
-    </nav>
+<nav class="navbar">
+    <button class="nav-btn" onclick="toggleSidebar('sidebar-left')"><i class="fas fa-bars"></i></button>
+    <div class="nav-title"><img src="glamelogo.png" alt="Glame Pro" style="height: 32px; vertical-align: middle;"></div>
+    <div class="auth-controls">
+        <button class="btn-profile" id="user-profile-btn" onclick="openAuthModal()">
+            <i class="fas fa-user-circle"></i> Login
+        </button>
+        <button class="nav-btn" onclick="toggleSidebar('sidebar-right')"><i class="fas fa-sliders-h"></i></button>
+    </div>
+</nav>
 
     <div class="app-container">
         <aside class="sidebar collapsed-left" id="sidebar-left">
@@ -901,50 +902,30 @@ if (res.status === 429) {
                 }
             }
         }
+await flushTypewriter(fullReply);
 
-        await flushTypewriter(fullReply);
+        // Quiz hat Vorrang: wenn erkannt, werden IMG/SUGGEST übersprungen
+        const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
 
-// NEU: Quiz erkennen und rendern (hat Vorrang, IMG/SUGGEST werden dann übersprungen)
-const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
+        if (!isQuiz) {
+            // Bild-Tag erkennen und entfernen
+            const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/i);
+            if (imgMatch) {
+                const searchTerm = imgMatch[1].trim();
+                const cleanedReply = fullReply.replace(/\[IMG:\s*.+?\]\s*$/i, "").trim();
+                updateBubbleContent(currentTypingElement, cleanedReply);
+                fetchWikimediaImage(searchTerm, currentTypingElement);
+                fullReply = cleanedReply;
+            }
 
-if (!isQuiz) {
-    // Bild-Tag erkennen und entfernen
-    const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/i);
-    // ... (Rest wie gehabt, unverändert)
-}
-// Bild-Tag erkennen und entfernen
-const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/i);
-if (imgMatch) {
-    const searchTerm = imgMatch[1].trim();
-    const cleanedReply = fullReply.replace(/\[IMG:\s*.+?\]\s*$/i, "").trim();
-    
-    // Bubble-Text ohne das Tag neu rendern
-    updateBubbleContent(currentTypingElement, cleanedReply);
-    
-    // Wikimedia-Bild holen und anhängen
-    fetchWikimediaImage(searchTerm, currentTypingElement);
-    
-    // gespeicherter Chat-Text auch ohne Tag
-    fullReply = cleanedReply;
-}
-
-// Bild-Tag erkennen und entfernen
-const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/i);
-if (imgMatch) {
-    const searchTerm = imgMatch[1].trim();
-    const cleanedReply = fullReply.replace(/\[IMG:\s*.+?\]\s*$/i, "").trim();
-    updateBubbleContent(currentTypingElement, cleanedReply);
-    fetchWikimediaImage(searchTerm, currentTypingElement);
-    fullReply = cleanedReply;
-}
-
-// NEU: Suggestion-Tag erkennen und entfernen
-const { cleanedText: replyWithoutSuggestions, suggestions } = parseSuggestions(fullReply);
-if (suggestions.length) {
-    updateBubbleContent(currentTypingElement, replyWithoutSuggestions);
-    renderSuggestions(suggestions, currentTypingElement);
-    fullReply = replyWithoutSuggestions;
-}
+            // Suggestion-Tag erkennen und entfernen
+            const { cleanedText: replyWithoutSuggestions, suggestions } = parseSuggestions(fullReply);
+            if (suggestions.length) {
+                updateBubbleContent(currentTypingElement, replyWithoutSuggestions);
+                renderSuggestions(suggestions, currentTypingElement);
+                fullReply = replyWithoutSuggestions;
+            }
+        }
         
         allChats[currentId].messages.push({ role: "user", content: text, image: currentImg });
         allChats[currentId].messages.push({ role: "assistant", content: fullReply });
@@ -1048,36 +1029,42 @@ if (suggestions.length) {
     }
 
     function addMsgUI(role, content, image = null) {
-        const welcome = document.querySelector(".welcome-screen");
-        if(welcome) welcome.remove();
+    const welcome = document.querySelector(".welcome-screen");
+    if(welcome) welcome.remove();
 
-        const container = document.createElement("div");
-        container.className = `msg-container ${role}`;
-        const bubble = document.createElement("div");
-        bubble.className = "bubble";
-        
-        if (image) {
-            const imgEl = document.createElement("img");
-            imgEl.src = image;
-            imgEl.style.maxWidth = "100%";
-            imgEl.style.borderRadius = "10px";
-            imgEl.style.marginBottom = "10px";
-            imgEl.style.boxShadow = "var(--shadow-sm)";
-            bubble.appendChild(imgEl);
-        }
+    const container = document.createElement("div");
+    container.className = `msg-container ${role}`;
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    
+    if (image) {
+        const imgEl = document.createElement("img");
+        imgEl.src = image;
+        imgEl.style.maxWidth = "100%";
+        imgEl.style.borderRadius = "10px";
+        imgEl.style.marginBottom = "10px";
+        imgEl.style.boxShadow = "var(--shadow-sm)";
+        bubble.appendChild(imgEl);
+    }
 
-        const textDiv = document.createElement("div");
-        bubble.appendChild(textDiv);
-        
-        if (content) {
+    const textDiv = document.createElement("div");
+    bubble.appendChild(textDiv);
+    
+    if (content) {
+        // NEU: Prüfen ob es ein gespeichertes Quiz ist, BEVOR normal gerendert wird
+        const isQuiz = /\[QUIZ\]([\s\S]*?)\[\/QUIZ\]/i.test(content);
+        if (isQuiz) {
+            parseAndRenderQuiz(content, textDiv);
+        } else {
             updateBubbleContent(textDiv, content);
         }
-
-        container.appendChild(bubble);
-        chatWindow.appendChild(container);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-        return textDiv;
     }
+
+    container.appendChild(bubble);
+    chatWindow.appendChild(container);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return textDiv;
+}
 
     function updateBubbleContent(bubble, content) {
         bubble.innerHTML = marked.parse(content);
