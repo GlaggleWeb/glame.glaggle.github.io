@@ -906,25 +906,27 @@ await flushTypewriter(fullReply);
         // Quiz hat Vorrang: wenn erkannt, werden IMG/SUGGEST übersprungen
         const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
 
-        if (!isQuiz) {
-            // Bild-Tag erkennen und entfernen
-            const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/i);
-            if (imgMatch) {
-                const searchTerm = imgMatch[1].trim();
-                const cleanedReply = fullReply.replace(/\[IMG:\s*.+?\]\s*$/i, "").trim();
-                updateBubbleContent(currentTypingElement, cleanedReply);
-                fetchWikimediaImage(searchTerm, currentTypingElement);
-                fullReply = cleanedReply;
-            }
+if (!isQuiz) {
+    // Suggestion-Tag ZUERST entfernen (kann ganz am Ende stehen)
+    const { cleanedText: replyWithoutSuggestions, suggestions } = parseSuggestions(fullReply);
+    fullReply = replyWithoutSuggestions;
 
-            // Suggestion-Tag erkennen und entfernen
-            const { cleanedText: replyWithoutSuggestions, suggestions } = parseSuggestions(fullReply);
-            if (suggestions.length) {
-                updateBubbleContent(currentTypingElement, replyWithoutSuggestions);
-                renderSuggestions(suggestions, currentTypingElement);
-                fullReply = replyWithoutSuggestions;
-            }
-        }
+    // Bild-Tag JETZT suchen — muss nicht mehr am Stringende stehen, nur noch am Zeilenende
+    const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/im);
+    if (imgMatch) {
+        const searchTerm = imgMatch[1].trim();
+        const cleanedReply = fullReply.replace(/\[IMG:\s*.+?\]\s*$/im, "").trim();
+        updateBubbleContent(currentTypingElement, cleanedReply);
+        fetchWikimediaImage(searchTerm, currentTypingElement);
+        fullReply = cleanedReply;
+    }
+
+    // Suggestions jetzt rendern (Bubble-Inhalt ist jetzt der finale Text ohne Tags)
+    updateBubbleContent(currentTypingElement, fullReply);
+    if (suggestions.length) {
+        renderSuggestions(suggestions, currentTypingElement);
+    }
+}
         
         allChats[currentId].messages.push({ role: "user", content: text, image: currentImg });
         allChats[currentId].messages.push({ role: "assistant", content: fullReply });
