@@ -1166,7 +1166,7 @@ allChats[currentId].date = Date.now();
         return container;
     }
 
-    function addMsgUI(role, content, image = null) {
+   function addMsgUI(role, content, image = null, canvasData = null) {
     const welcome = document.querySelector(".welcome-screen");
     if(welcome) welcome.remove();
 
@@ -1297,7 +1297,7 @@ allChats[currentId].date = Date.now();
             `;
             chatWindow.appendChild(greetingDiv);
         } else {
-            msgs.forEach(m => addMsgUI(m.role, m.content, m.image));
+        
         }
     }
 
