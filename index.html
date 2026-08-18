@@ -295,7 +295,97 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
+
+        /* --- CANVAS MODE --- */
+#main-chat.canvas-active {
+    display: flex;
+    flex-direction: row;
+}
+#main-chat.canvas-active #chat-column {
+    width: 45%;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--card-border);
+    transition: width 0.3s ease;
+}
+#chat-column { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+#canvas-panel {
+    width: 55%;
+    display: none;
+    flex-direction: column;
+    background: var(--nav-bg);
+    animation: slideInCanvas 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#main-chat.canvas-active #canvas-panel { display: flex; }
+
+@keyframes slideInCanvas {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.canvas-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--card-border);
+    background: var(--card-bg);
+}
+.canvas-title {
+    display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 0.95rem;
+}
+.canvas-title i { color: var(--primary); }
+.canvas-actions { display: flex; gap: 6px; }
+
+.canvas-body {
+    flex: 1; overflow: hidden; display: flex; flex-direction: column; position: relative;
+}
+.canvas-tabs {
+    display: flex; gap: 4px; padding: 8px 20px 0 20px; background: var(--card-bg);
+    border-bottom: 1px solid var(--card-border);
+}
+.canvas-tab {
+    padding: 8px 16px; border-radius: 10px 10px 0 0; cursor: pointer; font-size: 0.85rem;
+    color: var(--desc-color); border: 1px solid transparent; border-bottom: none;
+}
+.canvas-tab.active {
+    background: var(--bg-color); color: var(--primary); font-weight: bold;
+    border-color: var(--card-border);
+}
+
+.canvas-code-view {
+    flex: 1; overflow: auto; padding: 20px; background: #1e1e1e; margin: 0;
+}
+.canvas-code-view pre { margin: 0; box-shadow: none; }
+
+.canvas-preview-frame {
+    flex: 1; border: none; width: 100%; background: white; display: none;
+}
+.canvas-story-view {
+    flex: 1; overflow: auto; padding: 30px 40px; background: var(--bg-color);
+    line-height: 1.8; font-size: 1.05rem;
+}
+
+/* --- FILE CARD IM CHATVERLAUF --- */
+.canvas-file-card {
+    display: flex; align-items: center; gap: 14px; background: var(--card-bg);
+    border: 1px solid var(--card-border); border-radius: var(--radius-md);
+    padding: 14px 18px; cursor: pointer; transition: 0.2s; max-width: 320px;
+    box-shadow: var(--shadow-sm);
+}
+.canvas-file-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.canvas-file-icon {
+    width: 42px; height: 42px; border-radius: 10px; background: rgba(0,127,255,0.12);
+    color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;
+}
+.canvas-file-info { min-width: 0; }
+.canvas-file-title { font-weight: bold; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.canvas-file-sub { font-size: 0.75rem; color: var(--desc-color); }
+
+@media (max-width: 768px) {
+    #main-chat.canvas-active { flex-direction: column; }
+    #main-chat.canvas-active #chat-column { width: 100%; height: 40%; border-right: none; border-bottom: 1px solid var(--card-border); }
+    #main-chat.canvas-active #canvas-panel { width: 100%; height: 60%; }
+}
     </style>
 </head>
 <body data-theme="auto">
@@ -341,6 +431,27 @@
                     <button class="icon-btn" id="send-btn" style="color: var(--primary)"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
+
+            <div id="canvas-panel">
+        <div class="canvas-header">
+            <div class="canvas-title"><i class="fas fa-code" id="canvas-icon"></i> <span id="canvas-title-text">Canvas</span></div>
+            <div class="canvas-actions">
+                <button class="icon-btn" onclick="copyCanvasContent()" title="Kopieren"><i class="fas fa-copy"></i></button>
+                <button class="icon-btn" onclick="downloadCanvasContent()" title="Herunterladen"><i class="fas fa-download"></i></button>
+                <button class="icon-btn" onclick="closeCanvas()" title="Schliessen"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div class="canvas-tabs" id="canvas-tabs" style="display:none;">
+            <div class="canvas-tab active" data-view="code" onclick="switchCanvasView('code')">Code</div>
+            <div class="canvas-tab" data-view="preview" onclick="switchCanvasView('preview')">Vorschau</div>
+        </div>
+        <div class="canvas-body">
+            <pre class="canvas-code-view" id="canvas-code-view"><code id="canvas-code-content"></code></pre>
+            <iframe class="canvas-preview-frame" id="canvas-preview-frame"></iframe>
+            <div class="canvas-story-view" id="canvas-story-view" style="display:none;"></div>
+        </div>
+    </div>
+            
         </main>
 
         <aside class="sidebar collapsed-right" id="sidebar-right">
@@ -903,6 +1014,28 @@ if (res.status === 429) {
         }
 await flushTypewriter(fullReply);
 
+
+    // Nach dem Suggestion-Block, noch innerhalb if (!isQuiz) { ... }
+const canvasData = detectCanvasContent(fullReply);
+if (canvasData) {
+    // Text im Chat kürzen: nur eine kurze Zusammenfassung/Einleitung anzeigen, Rest ins Canvas
+    let chatSummary;
+    if (canvasData.type === "code") {
+        chatSummary = fullReply.split("```")[0].trim() || "Hier ist dein Code:";
+    } else {
+        chatSummary = fullReply.split("\n\n")[0].trim();
+    }
+    updateBubbleContent(currentTypingElement, chatSummary);
+
+    const autoTitle = canvasData.type === "code"
+        ? `${(canvasData.language || "Code").toUpperCase()}-Snippet`
+        : "Generierte Geschichte";
+
+    openCanvas(canvasData, autoTitle);
+    insertCanvasFileCard(currentTypingElement, { ...canvasData, title: autoTitle });
+    fullReply = chatSummary; // für Speicherung im Chatverlauf
+}
+
         // Quiz hat Vorrang: wenn erkannt, werden IMG/SUGGEST übersprungen
         const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
 
@@ -927,10 +1060,13 @@ if (!isQuiz) {
         renderSuggestions(suggestions, currentTypingElement);
     }
 }
-        
         allChats[currentId].messages.push({ role: "user", content: text, image: currentImg });
-        allChats[currentId].messages.push({ role: "assistant", content: fullReply });
-        allChats[currentId].date = Date.now();
+allChats[currentId].messages.push({
+    role: "assistant",
+    content: fullReply,
+    canvasData: canvasData ? { type: canvasData.type, language: canvasData.language, content: canvasData.content, title: autoTitle } : null
+});
+allChats[currentId].date = Date.now();
 
         if (allChats[currentId].title === "Neuer Chat") {
             try {
@@ -1007,6 +1143,7 @@ if (!isQuiz) {
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
+
     function showLoadingIndicator() {
         const welcome = document.querySelector(".welcome-screen");
         if(welcome) welcome.remove();
@@ -1059,6 +1196,10 @@ if (!isQuiz) {
         } else {
             updateBubbleContent(textDiv, content);
         }
+    }
+
+    if (canvasData) {
+        insertCanvasFileCard(textDiv, canvasData);
     }
 
     container.appendChild(bubble);
@@ -1118,6 +1259,7 @@ if (!isQuiz) {
     function renderMessages() {
         chatWindow.innerHTML = "";
         const msgs = allChats[currentId].messages || [];
+        msgs.forEach(m => addMsgUI(m.role, m.content, m.image, m.canvasData));
 
         if (msgs.length === 0) {
             const greetingDiv = document.createElement("div");
@@ -1419,6 +1561,164 @@ function parseAndRenderQuiz(text, bubbleElement) {
     bubbleElement.appendChild(quizWrapper);
     chatWindow.scrollTop = chatWindow.scrollHeight;
     return true;
+}
+
+// ==========================================
+// CANVAS MODE
+// ==========================================
+let canvasState = { open: false, type: null, content: "", language: "", title: "" };
+let canvasFileCounter = 0;
+
+// Erkennt, ob eine Antwort Canvas-würdig ist
+function detectCanvasContent(text) {
+    // Codeblock-Erkennung (mind. 1 Fenced Codeblock mit min. ~8 Zeilen)
+    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+    let match;
+    let biggestCode = null;
+
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+        const lang = match[1] || "text";
+        const code = match[2];
+        const lineCount = code.split("\n").length;
+        if (lineCount >= 8 && (!biggestCode || lineCount > biggestCode.lineCount)) {
+            biggestCode = { lang, code, lineCount };
+        }
+    }
+    if (biggestCode) {
+        return { type: "code", language: biggestCode.lang, content: biggestCode.code };
+    }
+
+    // Geschichten-Erkennung: lange Fliesstext-Antwort ohne Codeblock, viele Wörter
+    const plainText = text.replace(/```[\s\S]*?```/g, "").trim();
+    const wordCount = plainText.split(/\s+/).length;
+    const looksLikeStory = wordCount > 250 && !plainText.includes("|") && (plainText.match(/\n\n/g) || []).length >= 2;
+
+    if (looksLikeStory) {
+        return { type: "story", language: null, content: plainText };
+    }
+
+    return null;
+}
+
+function openCanvas(data, title) {
+    canvasState = { open: true, type: data.type, content: data.content, language: data.language, title: title || (data.type === "code" ? "Code" : "Geschichte") };
+
+    document.getElementById("main-chat").classList.add("canvas-active");
+    document.getElementById("canvas-title-text").textContent = canvasState.title;
+    document.getElementById("canvas-icon").className = data.type === "code" ? "fas fa-code" : "fas fa-book-open";
+
+    const codeView = document.getElementById("canvas-code-view");
+    const storyView = document.getElementById("canvas-story-view");
+    const previewFrame = document.getElementById("canvas-preview-frame");
+    const tabs = document.getElementById("canvas-tabs");
+
+    if (data.type === "code") {
+        storyView.style.display = "none";
+        codeView.style.display = "block";
+        const codeEl = document.getElementById("canvas-code-content");
+        codeEl.className = "language-" + (data.language || "javascript");
+        codeEl.textContent = data.content;
+        if (window.Prism) Prism.highlightElement(codeEl);
+
+        // Vorschau nur bei HTML sinnvoll
+        if (data.language === "html") {
+            tabs.style.display = "flex";
+            previewFrame.srcdoc = data.content;
+        } else {
+            tabs.style.display = "none";
+            previewFrame.style.display = "none";
+            codeView.style.display = "block";
+        }
+    } else {
+        codeView.style.display = "none";
+        previewFrame.style.display = "none";
+        tabs.style.display = "none";
+        storyView.style.display = "block";
+        storyView.innerHTML = marked.parse(data.content);
+    }
+}
+
+function switchCanvasView(view) {
+    document.querySelectorAll(".canvas-tab").forEach(t => t.classList.toggle("active", t.dataset.view === view));
+    const codeView = document.getElementById("canvas-code-view");
+    const previewFrame = document.getElementById("canvas-preview-frame");
+
+    if (view === "preview") {
+        codeView.style.display = "none";
+        previewFrame.style.display = "block";
+    } else {
+        codeView.style.display = "block";
+        previewFrame.style.display = "none";
+    }
+}
+
+// Schliessen: Inhalt wird als Datei-Karte im Chat "eingefroren"
+function closeCanvas() {
+    if (!canvasState.open) return;
+
+    // Datei-Karte in den letzten Bot-Bubble injizieren (falls noch nicht vorhanden)
+    if (currentTypingElement && !currentTypingElement.querySelector(".canvas-file-card")) {
+        insertCanvasFileCard(currentTypingElement, canvasState);
+    }
+
+    document.getElementById("main-chat").classList.remove("canvas-active");
+    canvasState = { open: false, type: null, content: "", language: "", title: "" };
+}
+
+function insertCanvasFileCard(bubbleElement, data) {
+    canvasFileCounter++;
+    const fileId = "canvasfile_" + Date.now() + "_" + canvasFileCounter;
+
+    // Inhalt für spätere Wiederherstellung im DOM speichern (data-Attribut, JSON-escaped)
+    const card = document.createElement("div");
+    card.className = "canvas-file-card";
+    card.id = fileId;
+    card.dataset.canvasType = data.type;
+    card.dataset.canvasLang = data.language || "";
+    card.dataset.canvasTitle = data.title;
+    card.dataset.canvasContent = encodeURIComponent(data.content);
+
+    const iconClass = data.type === "code" ? "fa-code" : "fa-book-open";
+    const subLabel = data.type === "code" ? (data.language || "code").toUpperCase() : "Geschichte";
+
+    card.innerHTML = `
+        <div class="canvas-file-icon"><i class="fas ${iconClass}"></i></div>
+        <div class="canvas-file-info">
+            <div class="canvas-file-title">${data.title}</div>
+            <div class="canvas-file-sub">${subLabel} · Canvas öffnen</div>
+        </div>
+    `;
+    card.onclick = () => {
+        const restored = {
+            type: card.dataset.canvasType,
+            language: card.dataset.canvasLang,
+            content: decodeURIComponent(card.dataset.canvasContent)
+        };
+        openCanvas(restored, card.dataset.canvasTitle);
+    };
+
+    bubbleElement.appendChild(card);
+}
+
+function copyCanvasContent() {
+    navigator.clipboard.writeText(canvasState.content).then(() => {
+        const btn = event.currentTarget;
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => btn.innerHTML = original, 1500);
+    });
+}
+
+function downloadCanvasContent() {
+    const extMap = { html: "html", javascript: "js", python: "py", css: "css", json: "json", java: "java", cpp: "cpp", c: "c", php: "php", sql: "sql" };
+    const ext = canvasState.type === "code" ? (extMap[canvasState.language] || "txt") : "md";
+    const blob = new Blob([canvasState.content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${canvasState.title.replace(/\s+/g, "_")}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 </script>
 </body>
