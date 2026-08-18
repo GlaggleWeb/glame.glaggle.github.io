@@ -739,7 +739,7 @@ async function generateExpertDraft(userPrompt) {
             method: "POST",
             headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
             body: JSON.stringify({
-                model: "openai/gpt-oss-20b",
+                model: "openai/gpt-oss-120b",
                 messages: [
                     { 
                         role: "system", 
@@ -936,7 +936,7 @@ await flushTypewriter(fullReply);
                     method: "POST",
                     headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        model: "llama-3.1-8b-instant",
+                        model: "openai/gpt-oss-20b",
                         messages: [
                             { role: "system", content: "Gib mir einen kurzen Titel (max 2 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel." },
                             { role: "user", content: text }
