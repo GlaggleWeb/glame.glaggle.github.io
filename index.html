@@ -386,6 +386,16 @@
     #main-chat.canvas-active #chat-column { width: 100%; height: 40%; border-right: none; border-bottom: 1px solid var(--card-border); }
     #main-chat.canvas-active #canvas-panel { width: 100%; height: 60%; }
 }
+
+.bot .bubble, .user .bubble {
+    width: fit-content;
+    max-width: 80%;
+}
+.bubble p { margin: 0 0 8px 0; }
+.bubble p:last-child { margin-bottom: 0; }
+.bubble ul, .bubble ol { margin: 8px 0; padding-left: 20px; }
+.bubble { min-width: 0; }
+#chat-window { min-width: 0; }
     </style>
 </head>
 <body data-theme="auto">
@@ -1015,10 +1025,9 @@ if (res.status === 429) {
 await flushTypewriter(fullReply);
 
 
-    // Nach dem Suggestion-Block, noch innerhalb if (!isQuiz) { ... }
 const canvasData = detectCanvasContent(fullReply);
+let autoTitle = "";
 if (canvasData) {
-    // Text im Chat kürzen: nur eine kurze Zusammenfassung/Einleitung anzeigen, Rest ins Canvas
     let chatSummary;
     if (canvasData.type === "code") {
         chatSummary = fullReply.split("```")[0].trim() || "Hier ist dein Code:";
@@ -1027,13 +1036,13 @@ if (canvasData) {
     }
     updateBubbleContent(currentTypingElement, chatSummary);
 
-    const autoTitle = canvasData.type === "code"
+    autoTitle = canvasData.type === "code"
         ? `${(canvasData.language || "Code").toUpperCase()}-Snippet`
         : "Generierte Geschichte";
 
     openCanvas(canvasData, autoTitle);
     insertCanvasFileCard(currentTypingElement, { ...canvasData, title: autoTitle });
-    fullReply = chatSummary; // für Speicherung im Chatverlauf
+    fullReply = chatSummary;
 }
 
         // Quiz hat Vorrang: wenn erkannt, werden IMG/SUGGEST übersprungen
@@ -1569,9 +1578,7 @@ function parseAndRenderQuiz(text, bubbleElement) {
 let canvasState = { open: false, type: null, content: "", language: "", title: "" };
 let canvasFileCounter = 0;
 
-// Erkennt, ob eine Antwort Canvas-würdig ist
 function detectCanvasContent(text) {
-    // Codeblock-Erkennung (mind. 1 Fenced Codeblock mit min. ~8 Zeilen)
     const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
     let match;
     let biggestCode = null;
@@ -1580,15 +1587,33 @@ function detectCanvasContent(text) {
         const lang = match[1] || "text";
         const code = match[2];
         const lineCount = code.split("\n").length;
-        if (lineCount >= 8 && (!biggestCode || lineCount > biggestCode.lineCount)) {
+        if (!biggestCode || lineCount > biggestCode.lineCount) {
             biggestCode = { lang, code, lineCount };
         }
     }
+
     if (biggestCode) {
-        return { type: "code", language: biggestCode.lang, content: biggestCode.code };
+        const code = biggestCode.code;
+        const lang = biggestCode.lang.toLowerCase();
+
+        // Vollständiges HTML-Dokument -> immer Canvas
+        const isFullHtmlDoc = lang === "html" && /<!DOCTYPE|<html[\s>]/i.test(code);
+
+        // Mehrere Funktionen/Klassen zählen (grobe Heuristik über gängige Sprachen)
+        const funcMatches = code.match(/\bfunction\s+\w+\s*\(|=>\s*{|\bdef\s+\w+\s*\(|\bclass\s+\w+/g) || [];
+        const hasMultipleFunctions = funcMatches.length >= 2;
+
+        // Canvas nur bei: komplettes HTML-Programm ODER langer Code (>25 Zeilen) ODER mehrere Funktionen
+        const isFullProgram = isFullHtmlDoc || biggestCode.lineCount > 25 || hasMultipleFunctions;
+
+        if (isFullProgram) {
+            return { type: "code", language: biggestCode.lang, content: code };
+        }
+        // Sonst: kein Canvas, Code bleibt normal im Chat (return null fällt durch zur Story-Prüfung, aber Code soll NICHT als Story erkannt werden)
+        return null;
     }
 
-    // Geschichten-Erkennung: lange Fliesstext-Antwort ohne Codeblock, viele Wörter
+    // Geschichten-Erkennung bleibt gleich
     const plainText = text.replace(/```[\s\S]*?```/g, "").trim();
     const wordCount = plainText.split(/\s+/).length;
     const looksLikeStory = wordCount > 250 && !plainText.includes("|") && (plainText.match(/\n\n/g) || []).length >= 2;
