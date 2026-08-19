@@ -404,6 +404,79 @@
 .bubble ul, .bubble ol { margin: 8px 0; padding-left: 20px; }
 .bubble { min-width: 0; }
 #chat-window { min-width: 0; }
+/* --- TRIP CARDS --- */
+.trip-wrapper { display: flex; flex-direction: column; gap: 14px; }
+
+.trip-day-tabs {
+    display: flex; gap: 8px; flex-wrap: wrap;
+}
+.trip-day-tab {
+    background: var(--input-bg); border: 1px solid var(--card-border);
+    color: var(--desc-color); padding: 8px 16px; border-radius: var(--radius-pill);
+    font-size: 0.85rem; cursor: pointer; font-family: inherit; transition: 0.2s;
+}
+.trip-day-tab.active, .trip-day-tab:hover {
+    background: var(--primary); color: white; border-color: var(--primary);
+}
+
+.trip-day-panel { display: flex; flex-direction: column; gap: 12px; }
+.trip-day-title { font-weight: bold; font-size: 1rem; color: var(--text-color); }
+
+.trip-stops { display: flex; flex-direction: column; gap: 10px; }
+
+.trip-stop-card {
+    display: flex; gap: 14px; background: var(--bg-color);
+    border: 1px solid var(--card-border); border-radius: var(--radius-md);
+    padding: 12px; align-items: center;
+}
+.trip-stop-img {
+    width: 90px; height: 90px; border-radius: 12px; overflow: hidden;
+    flex-shrink: 0; background: var(--card-border);
+    display: flex; align-items: center; justify-content: center;
+}
+.trip-stop-img img { width: 100%; height: 100%; object-fit: cover; }
+.trip-stop-img-placeholder { color: var(--desc-color); font-size: 1.4rem; }
+
+.trip-stop-info { min-width: 0; }
+.trip-stop-time {
+    font-size: 0.75rem; color: var(--primary); font-weight: bold; margin-bottom: 3px;
+}
+.trip-stop-name { font-weight: bold; font-size: 0.95rem; margin-bottom: 4px; }
+.trip-stop-desc { font-size: 0.85rem; color: var(--desc-color); line-height: 1.4; }
+
+/* --- RECIPE CARDS --- */
+.recipe-wrapper {
+    display: flex; flex-direction: column; border-radius: var(--radius-lg);
+    overflow: hidden; border: 1px solid var(--card-border); background: var(--bg-color);
+}
+.recipe-hero {
+    width: 100%; height: 180px; background: var(--card-border);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.recipe-hero img { width: 100%; height: 100%; object-fit: cover; }
+
+.recipe-body { padding: 18px; }
+.recipe-title { color: var(--primary); margin-bottom: 8px; }
+.recipe-meta {
+    display: flex; gap: 16px; font-size: 0.85rem; color: var(--desc-color); margin-bottom: 16px;
+}
+.recipe-meta i { color: var(--primary); margin-right: 5px; }
+
+.recipe-columns {
+    display: flex; gap: 24px; flex-wrap: wrap;
+}
+.recipe-ingredients, .recipe-steps { flex: 1; min-width: 200px; }
+.recipe-ingredients h4, .recipe-steps h4 {
+    font-size: 0.9rem; color: var(--text-color); margin-bottom: 10px;
+    border-bottom: 2px solid var(--primary); padding-bottom: 6px; display: inline-block;
+}
+.recipe-ingredients ul { padding-left: 18px; line-height: 1.9; font-size: 0.9rem; }
+.recipe-steps ol { padding-left: 18px; line-height: 1.9; font-size: 0.9rem; }
+
+@media (max-width: 768px) {
+    .recipe-columns { flex-direction: column; }
+    .trip-stop-card { flex-direction: row; }
+}
     </style>
 </head>
 <body data-theme="auto">
@@ -966,11 +1039,22 @@ const payload = {
         messages: [
             { 
                 role: "system", 
-                content: `Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte stets auf Deutsch. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören. WICHTIG: Wenn das Thema deiner Antwort sich gut mit einem Bild veranschaulichen lässt (nur bei ca. 20-50% der Antworten, wenn es wirklich sinnvoll ist, z.B. bei Orten, Tieren, Personen, Objekten, historischen Ereignissen), füge GANZ AM ENDE deiner Antwort in einer EIGENEN, LETZTEN Zeile GENAU folgendes Format hinzu, OHNE Punkt oder sonstige Zeichen danach: [IMG: kurzer englischer Suchbegriff] . Bei reinen Text-/Code-/abstrakten Themen lass das komplett weg. Wenn es sinnvolle, naheliegende Folgefragen gibt die der User stellen könnte (nur bei ca. 40-50% der Antworten, wenn wirklich hilfreich), füge GANZ AM ENDE (nach einem eventuellen [IMG:]-Tag) eine EIGENE, LETZTE Zeile hinzu im Format: [SUGGEST: Frage 1 | Frage 2 | Frage 3] mit 2-3 kurzen, prägnanten Folgefragen aus Sicht des Users. Bei einfachen/abgeschlossenen Antworten lass das komplett weg. Wenn der User explizit nach einem Quiz, Test oder Fragen zum Üben fragt, antworte NUR mit einem Block im Format:
+                content: `Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte stets auf Deutsch. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören. WICHTIG: Wenn das Thema deiner Antwort sich gut mit einem Bild veranschaulichen lässt (nur bei ca. 20-50% der Antworten, wenn es wirklich sinnvoll ist, z.B. bei Orten, Tieren, Personen, Objekten, historischen Ereignissen), füge GANZ AM ENDE deiner Antwort in einer EIGENEN, LETZTEN Zeile GENAU folgendes Format hinzu, OHNE Punkt oder sonstige Zeichen danach: [IMG: kurzer englischer Suchbegriff] . Bei reinen Text-/Code-/abstrakten Themen lass das komplett weg. Wenn es sinnvolle, naheliegende Folgefragen gibt die der User stellen könnte (nur bei ca. 40-50% der Antworten, wenn wirklich hilfreich), füge GANZ AM ENDE (nach einem eventuellen [IMG:]-Tag) eine EIGENE, LETZTE Zeile hinzu im Format: [SUGGEST: Frage 1 | Frage 2 | Frage 3] mit 2-3 kurzen, prägnanten Folgefragen aus Sicht des Users. Bei einfachen/abgeschlossenen Antworten lass das komplett weg.
+
+Wenn der User explizit nach einer Reiseplanung, Reiseroute, einem Trip oder Sightseeing-Plan fragt, antworte NUR mit einem Block im Format (kein Text davor oder danach):
+[TRIP]
+{"destination": "Stadtname, Land", "days": [{"day": "Tag 1", "title": "Kurzer Titel für den Tag", "stops": [{"name": "Ort/Aktivität", "time": "z.B. 9:00 Uhr oder Vormittag", "desc": "1-2 Sätze Beschreibung", "img": "kurzer englischer Bildsuchbegriff"}]}]}
+Erstelle für jeden Tag 3-5 Stops mit unterschiedlichen img-Suchbegriffen (spezifisch, z.B. "Senso-ji Temple Tokyo" statt nur "temple").
+
+Wenn der User explizit nach einem Rezept, Kochanleitung oder Essen zum Nachkochen fragt, antworte NUR mit einem Block im Format (kein Text davor oder danach):
+[RECIPE]
+{"title": "Rezeptname", "img": "kurzer englischer Bildsuchbegriff für das fertige Gericht", "servings": 4, "time": "z.B. 30 Min.", "ingredients": ["200g Mehl", "2 Eier", "..."], "steps": ["Schritt 1 Beschreibung", "Schritt 2 Beschreibung", "..."]}
+
+Wenn der User explizit nach einem Quiz, Test oder Fragen zum Üben fragt, antworte NUR mit einem Block im Format:
 [QUIZ]
 {"title": "Titel des Quiz", "questions": [{"q": "Frage 1?", "options": ["A", "B", "C", "D"], "correct": 0}, {"q": "Frage 2?", "options": ["A", "B", "C", "D"], "correct": 2}]}
 [/QUIZ]
-Erstelle 5 Fragen mit je 4 Antwortmöglichkeiten, "correct" ist der Index (0-3) der richtigen Antwort. Kein Text davor oder danach, nur den Block.` 
+Erstelle 5 Fragen mit je 4 Antwortmöglichkeiten, "correct" ist der Index (0-3) der richtigen Antwort. Kein Text davor oder danach, nur den Block.`
             },
             ...history, // Original History bleibt erhalten
             { role: "user", content: userContent }
@@ -1053,11 +1137,12 @@ if (canvasData) {
     insertCanvasFileCard(currentTypingElement, { ...canvasData, title: autoTitle });
     fullReply = chatSummary;
 }
+// Spezial-Formate haben Vorrang: wenn erkannt, werden IMG/SUGGEST übersprungen
+const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
+const isTrip = !isQuiz && parseAndRenderTrip(fullReply, currentTypingElement);
+const isRecipe = !isQuiz && !isTrip && parseAndRenderRecipe(fullReply, currentTypingElement);
 
-        // Quiz hat Vorrang: wenn erkannt, werden IMG/SUGGEST übersprungen
-        const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
-
-if (!isQuiz) {
+if (!isQuiz && !isTrip && !isRecipe) {
     // Suggestion-Tag ZUERST entfernen (kann ganz am Ende stehen)
     const { cleanedText: replyWithoutSuggestions, suggestions } = parseSuggestions(fullReply);
     fullReply = replyWithoutSuggestions;
@@ -1207,10 +1292,13 @@ allChats[currentId].date = Date.now();
     bubble.appendChild(textDiv);
     
     if (content) {
-        // NEU: Prüfen ob es ein gespeichertes Quiz ist, BEVOR normal gerendert wird
-        const isQuiz = /\[QUIZ\]([\s\S]*?)\[\/QUIZ\]/i.test(content);
-        if (isQuiz) {
+        // Prüfen ob es ein gespeichertes Spezial-Format ist, BEVOR normal gerendert wird
+        if (/\[QUIZ\]/i.test(content)) {
             parseAndRenderQuiz(content, textDiv);
+        } else if (/\[TRIP\]/i.test(content)) {
+            parseAndRenderTrip(content, textDiv);
+        } else if (/\[RECIPE\]/i.test(content)) {
+            parseAndRenderRecipe(content, textDiv);
         } else {
             updateBubbleContent(textDiv, content);
         }
@@ -1274,51 +1362,89 @@ allChats[currentId].date = Date.now();
         renderMessages();
     }
 
-    function renderMessages() {
-        chatWindow.innerHTML = "";
-        const msgs = allChats[currentId].messages || [];
-        msgs.forEach(m => addMsgUI(m.role, m.content, m.image, m.canvasData));
+  function renderMessages() {
+    chatWindow.innerHTML = "";
+    const msgs = allChats[currentId].messages || [];
+    msgs.forEach(m => addMsgUI(m.role, m.content, m.image, m.canvasData));
 
-        if (msgs.length === 0) {
-            const greetingDiv = document.createElement("div");
-            greetingDiv.className = "welcome-screen";
+    if (msgs.length === 0) {
+        const greetingDiv = document.createElement("div");
+        greetingDiv.className = "welcome-screen";
 
-            const hour = new Date().getHours();
-            let baseGreeting = "Guten Tag";
-            
-            if (hour >= 5 && hour < 12) baseGreeting = "Guten Morgen";
-            else if (hour >= 12 && hour < 14) baseGreeting = "Mahlzeit";
-            else if (hour >= 14 && hour < 18) baseGreeting = "Schönen Nachmittag";
-            else if (hour >= 18 && hour < 23) baseGreeting = "Guten Abend";
-            else baseGreeting = "Späte Grüße";
-
-            const displayName = glaggleProfile ? glaggleProfile.userName : (currentUser ? currentUser.name : "Glame AI Pro-Gast");
-
-            const dynamicPhrases = [
-                "Was steht heute Aufregendes auf deinem Plan? 🌟",
-                "Bereit, ein paar kreative Geistesblitze zu zünden? ⚡",
-                "Wie kann ich dein Leben heute ein Stückchen leichter machen? ✨",
-                "Ich bin startklar für deine schlausten Fragen!",
-                "Welches spannende Abenteuer steht heute an? 🚀",
-                "Lass uns gemeinsam etwas absolut Geniales erschaffen! 🛠️",
-                "Schön, dass du da bist! Lass uns deine Gedanken ordnen. 💭",
-                "Ich bin ganz Ohr! Was beschäftigt dich in diesem Moment? 🧠",
-                "Deine genialen Ideen + meine KI-Power = Magie! Legen wir los? 🎨",
-                "Lass uns heute ein paar komplexe Rätsel im Handumdrehen lösen!"
-            ];
-            
-            const randomPhrase = dynamicPhrases[Math.floor(Math.random() * dynamicPhrases.length)];
-
-            greetingDiv.innerHTML = `
-                <div class="welcome-title">${baseGreeting}, ${displayName}! 👋</div>
-                <div class="welcome-subtitle">${randomPhrase}</div>
-            `;
-            chatWindow.appendChild(greetingDiv);
-        } else {
+        const hour = new Date().getHours();
+        let baseGreeting = "Guten Tag";
         
-        }
-    }
+        if (hour >= 5 && hour < 12) baseGreeting = "Guten Morgen";
+        else if (hour >= 12 && hour < 14) baseGreeting = "Mahlzeit";
+        else if (hour >= 14 && hour < 18) baseGreeting = "Schönen Nachmittag";
+        else if (hour >= 18 && hour < 23) baseGreeting = "Guten Abend";
+        else baseGreeting = "Späte Grüße";
 
+        const displayName = glaggleProfile ? glaggleProfile.userName : (currentUser ? currentUser.name : "Glame AI Pro-Gast");
+
+        const dynamicPhrases = [
+            "Was steht heute Aufregendes auf deinem Plan? 🌟",
+            "Bereit, ein paar kreative Geistesblitze zu zünden? ⚡",
+            "Wie kann ich dein Leben heute ein Stückchen leichter machen? ✨",
+            "Ich bin startklar für deine schlausten Fragen!",
+            "Welches spannende Abenteuer steht heute an? 🚀",
+            "Lass uns gemeinsam etwas absolut Geniales erschaffen! 🛠️",
+            "Schön, dass du da bist! Lass uns deine Gedanken ordnen. 💭",
+            "Ich bin ganz Ohr! Was beschäftigt dich in diesem Moment? 🧠",
+            "Deine genialen Ideen + meine KI-Power = Magie! Legen wir los? 🎨",
+            "Lass uns heute ein paar komplexe Rätsel im Handumdrehen lösen!"
+        ];
+        
+        const randomPhrase = dynamicPhrases[Math.floor(Math.random() * dynamicPhrases.length)];
+
+        greetingDiv.innerHTML = `
+            <div class="welcome-title">${baseGreeting}, ${displayName}! 👋</div>
+            <div class="welcome-subtitle">${randomPhrase}</div>
+            <div class="starter-prompts" id="starter-prompts"></div>
+        `;
+        chatWindow.appendChild(greetingDiv);
+        renderStarterPrompts();
+    } else {
+    
+    }
+}
+
+function renderStarterPrompts() {
+    const container = document.getElementById("starter-prompts");
+    if (!container) return;
+
+    const starters = [
+        {
+            icon: "fa-code",
+            title: "Website bauen",
+            desc: "Komplette HTML/CSS/JS App erstellen",
+            prompt: "Erstelle mir eine komplette, funktionierende HTML-Datei mit eingebettetem CSS und JavaScript für eine kleine interaktive Web-App. Mach es hübsch, modern und direkt lauffähig."
+        },
+        {
+            icon: "fa-plane",
+            title: "Reise planen",
+            desc: "Reiseroute mit Bildern und Highlights",
+            prompt: "Plane mir eine 3-tägige Reise nach Tokio mit den besten Sehenswürdigkeiten, Restaurants und Insider-Tipps für jeden Tag."
+        }
+    ];
+
+    starters.forEach(s => {
+        const card = document.createElement("div");
+        card.className = "starter-card";
+        card.innerHTML = `
+            <div class="starter-icon"><i class="fas ${s.icon}"></i></div>
+            <div class="starter-info">
+                <div class="starter-title">${s.title}</div>
+                <div class="starter-desc">${s.desc}</div>
+            </div>
+        `;
+        card.onclick = () => {
+            userInput.value = s.prompt;
+            handleSend();
+        };
+        container.appendChild(card);
+    });
+}
     function renderChatList() {
         const list = document.getElementById("chat-list");
         list.innerHTML = "";
@@ -1753,6 +1879,171 @@ function downloadCanvasContent() {
     a.download = `${canvasState.title.replace(/\s+/g, "_")}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
+}
+
+// ==========================================
+// TRIP CARDS (Reiseplaner)
+// ==========================================
+function parseAndRenderTrip(text, bubbleElement) {
+    const match = text.match(/\[TRIP\]([\s\S]*?)(\[\/TRIP\]|$)/i);
+    if (!match) return false;
+
+    let tripData;
+    try {
+        let raw = match[1].trim();
+        // Falls das Modell trotzdem einen schließenden Tag mitschickt, sauber abschneiden
+        raw = raw.replace(/\[\/TRIP\]\s*$/i, "").trim();
+        tripData = JSON.parse(raw);
+    } catch (e) {
+        console.error("Trip-Parsing fehlgeschlagen", e);
+        return false;
+    }
+
+    bubbleElement.innerHTML = "";
+    const wrapper = document.createElement("div");
+    wrapper.className = "trip-wrapper";
+
+    const title = document.createElement("h3");
+    title.innerHTML = `✈️ ${tripData.destination}`;
+    title.style.cssText = "color: var(--primary); margin-bottom: 16px;";
+    wrapper.appendChild(title);
+
+    const tabsBar = document.createElement("div");
+    tabsBar.className = "trip-day-tabs";
+
+    const dayPanels = document.createElement("div");
+
+    (tripData.days || []).forEach((day, idx) => {
+        const tab = document.createElement("button");
+        tab.className = "trip-day-tab" + (idx === 0 ? " active" : "");
+        tab.textContent = day.day;
+        tab.onclick = () => {
+            wrapper.querySelectorAll(".trip-day-tab").forEach(t => t.classList.remove("active"));
+            tab.classList.add("active");
+            wrapper.querySelectorAll(".trip-day-panel").forEach(p => p.style.display = "none");
+            panel.style.display = "flex";
+        };
+        tabsBar.appendChild(tab);
+
+        const panel = document.createElement("div");
+        panel.className = "trip-day-panel";
+        panel.style.display = idx === 0 ? "flex" : "none";
+
+        if (day.title) {
+            const dayTitle = document.createElement("div");
+            dayTitle.className = "trip-day-title";
+            dayTitle.textContent = day.title;
+            panel.appendChild(dayTitle);
+        }
+
+        const stopsList = document.createElement("div");
+        stopsList.className = "trip-stops";
+
+        (day.stops || []).forEach(stop => {
+            const stopCard = document.createElement("div");
+            stopCard.className = "trip-stop-card";
+            stopCard.innerHTML = `
+                <div class="trip-stop-img" data-query="${(stop.img || stop.name).replace(/"/g, '&quot;')}">
+                    <div class="trip-stop-img-placeholder"><i class="fas fa-image"></i></div>
+                </div>
+                <div class="trip-stop-info">
+                    ${stop.time ? `<div class="trip-stop-time">${stop.time}</div>` : ""}
+                    <div class="trip-stop-name">${stop.name}</div>
+                    ${stop.desc ? `<div class="trip-stop-desc">${stop.desc}</div>` : ""}
+                </div>
+            `;
+            stopsList.appendChild(stopCard);
+
+            // Bild asynchron nachladen
+            const imgSlot = stopCard.querySelector(".trip-stop-img");
+            fetchWikimediaThumbnail(stop.img || stop.name, imgSlot);
+        });
+
+        panel.appendChild(stopsList);
+        dayPanels.appendChild(panel);
+    });
+
+    wrapper.appendChild(tabsBar);
+    wrapper.appendChild(dayPanels);
+    bubbleElement.appendChild(wrapper);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return true;
+}
+
+// Leichtgewichtige Variante von fetchWikimediaImage: lädt nur das Thumbnail in ein Ziel-Element
+async function fetchWikimediaThumbnail(query, targetEl) {
+    try {
+        const projectAgent = "Glame_AI_Pro_1.0_(https_glaggle_ch;_info_glaggle_ch)";
+        const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&format=json&origin=*&srlimit=1&useragent=${projectAgent}`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+
+        if (!searchData.query || !searchData.query.search || !searchData.query.search.length) return;
+        const fileTitle = searchData.query.search[0].title;
+
+        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url&iiurlwidth=400&format=json&origin=*&useragent=${projectAgent}`;
+        const infoRes = await fetch(infoUrl);
+        const infoData = await infoRes.json();
+
+        const pages = infoData.query.pages;
+        if (!pages) return;
+        const page = Object.values(pages)[0];
+        if (!page || !page.imageinfo || !page.imageinfo.length) return;
+
+        const imageUrl = page.imageinfo[0].thumburl || page.imageinfo[0].url;
+        targetEl.innerHTML = `<img src="${imageUrl}" alt="${query.replace(/"/g, '&quot;')}" loading="lazy">`;
+    } catch (e) {
+        console.warn("Thumbnail-Ladefehler:", e);
+    }
+}
+
+// ==========================================
+// RECIPE CARDS (Rezepte)
+// ==========================================
+function parseAndRenderRecipe(text, bubbleElement) {
+    const match = text.match(/\[RECIPE\]([\s\S]*?)(\[\/RECIPE\]|$)/i);
+    if (!match) return false;
+
+    let r;
+    try {
+        let raw = match[1].trim().replace(/\[\/RECIPE\]\s*$/i, "").trim();
+        r = JSON.parse(raw);
+    } catch (e) {
+        console.error("Rezept-Parsing fehlgeschlagen", e);
+        return false;
+    }
+
+    bubbleElement.innerHTML = "";
+    const wrapper = document.createElement("div");
+    wrapper.className = "recipe-wrapper";
+
+    wrapper.innerHTML = `
+        <div class="recipe-hero" id="recipe-hero-img">
+            <div class="trip-stop-img-placeholder"><i class="fas fa-utensils"></i></div>
+        </div>
+        <div class="recipe-body">
+            <h3 class="recipe-title">🍽️ ${r.title}</h3>
+            <div class="recipe-meta">
+                ${r.time ? `<span><i class="fas fa-clock"></i> ${r.time}</span>` : ""}
+                ${r.servings ? `<span><i class="fas fa-users"></i> ${r.servings} Portionen</span>` : ""}
+            </div>
+            <div class="recipe-columns">
+                <div class="recipe-ingredients">
+                    <h4>Zutaten</h4>
+                    <ul>${(r.ingredients || []).map(i => `<li>${i}</li>`).join("")}</ul>
+                </div>
+                <div class="recipe-steps">
+                    <h4>Zubereitung</h4>
+                    <ol>${(r.steps || []).map(s => `<li>${s}</li>`).join("")}</ol>
+                </div>
+            </div>
+        </div>
+    `;
+
+    bubbleElement.appendChild(wrapper);
+    fetchWikimediaThumbnail(r.img || r.title, document.getElementById("recipe-hero-img"));
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return true;
 }
 </script>
 </body>
