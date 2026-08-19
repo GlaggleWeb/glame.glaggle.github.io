@@ -309,7 +309,13 @@
     border-right: 1px solid var(--card-border);
     transition: width 0.3s ease;
 }
-#chat-column { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#chat-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+}
 
 #canvas-panel {
     width: 55%;
@@ -418,33 +424,34 @@
             <button class="btn-new-chat" onclick="createNewChat()"><i class="fas fa-plus"></i> Neuer Chat</button>
             <div id="chat-list"></div>
         </aside>
+<main id="main-chat">
+    <div id="chat-column">
+        <div id="chat-window"></div>
 
-        <main id="main-chat">
-            <div id="chat-window"></div>
-
-            <div id="input-wrapper">
-                <div class="search-bar-container">
-                    <!-- Bildvorschau -->
-                    <div id="image-preview-box">
-                        <img id="image-preview-img" src="" alt="Vorschau">
-                        <i class="fas fa-times-circle close-preview" onclick="clearImage()"></i>
-                    </div>
-
-                    <!-- Hidden File Input für Bilder -->
-                    <input type="file" id="image-file-input" accept="image/*" style="display: none;" onchange="handleImageSelection(event)">
-                    
-                    <button class="icon-btn" onclick="document.getElementById('image-file-input').click()" title="Bild anhängen">
-                        <i class="fas fa-paperclip"></i>
-                    </button>
-                    
-                    <textarea id="user-input" placeholder="Frag Glame etwas..." rows="1"></textarea>
-                    
-                    <button class="icon-btn" id="mic-btn"><i class="fas fa-microphone"></i></button>
-                    <button class="icon-btn" id="send-btn" style="color: var(--primary)"><i class="fas fa-paper-plane"></i></button>
+        <div id="input-wrapper">
+            <div class="search-bar-container">
+                <!-- Bildvorschau -->
+                <div id="image-preview-box">
+                    <img id="image-preview-img" src="" alt="Vorschau">
+                    <i class="fas fa-times-circle close-preview" onclick="clearImage()"></i>
                 </div>
-            </div>
 
-            <div id="canvas-panel">
+                <!-- Hidden File Input für Bilder -->
+                <input type="file" id="image-file-input" accept="image/*" style="display: none;" onchange="handleImageSelection(event)">
+                
+                <button class="icon-btn" onclick="document.getElementById('image-file-input').click()" title="Bild anhängen">
+                    <i class="fas fa-paperclip"></i>
+                </button>
+                
+                <textarea id="user-input" placeholder="Frag Glame etwas..." rows="1"></textarea>
+                
+                <button class="icon-btn" id="mic-btn"><i class="fas fa-microphone"></i></button>
+                <button class="icon-btn" id="send-btn" style="color: var(--primary)"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-panel">
         <div class="canvas-header">
             <div class="canvas-title"><i class="fas fa-code" id="canvas-icon"></i> <span id="canvas-title-text">Canvas</span></div>
             <div class="canvas-actions">
