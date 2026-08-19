@@ -477,6 +477,31 @@
     .recipe-columns { flex-direction: column; }
     .trip-stop-card { flex-direction: row; }
 }
+
+.trip-stop-img {
+    width: 90px; 
+    border-radius: 12px; overflow: hidden;
+    flex-shrink: 0; background: var(--card-border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.trip-stop-img img { width: 100%; height: 90px; object-fit: cover; display: block; }
+
+.recipe-hero {
+    width: 100%; background: var(--card-border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden;
+}
+.recipe-hero img { width: 100%; height: 180px; object-fit: cover; display: block; }
+
+.wm-credit {
+    font-size: 0.62rem;
+    color: var(--desc-color);
+    line-height: 1.3;
+    padding: 4px 6px;
+    text-align: center;
+    width: 100%;
+    background: var(--card-bg);
+}
+.wm-credit a { color: inherit; text-decoration: underline; }
     </style>
 </head>
 <body data-theme="auto">
@@ -1969,9 +1994,9 @@ function parseAndRenderTrip(text, bubbleElement) {
     chatWindow.scrollTop = chatWindow.scrollHeight;
     return true;
 }
-
-// Leichtgewichtige Variante von fetchWikimediaImage: lädt nur das Thumbnail in ein Ziel-Element
+    
 async function fetchWikimediaThumbnail(query, targetEl) {
+    if (!targetEl) return;
     try {
         const projectAgent = "Glame_AI_Pro_1.0_(https_glaggle_ch;_info_glaggle_ch)";
         const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&format=json&origin=*&srlimit=1&useragent=${projectAgent}`;
@@ -1981,7 +2006,8 @@ async function fetchWikimediaThumbnail(query, targetEl) {
         if (!searchData.query || !searchData.query.search || !searchData.query.search.length) return;
         const fileTitle = searchData.query.search[0].title;
 
-        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url&iiurlwidth=400&format=json&origin=*&useragent=${projectAgent}`;
+        // WICHTIG: extmetadata jetzt mit abfragen, genau wie bei fetchWikimediaImage
+        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=400&format=json&origin=*&useragent=${projectAgent}`;
         const infoRes = await fetch(infoUrl);
         const infoData = await infoRes.json();
 
@@ -1991,34 +2017,44 @@ async function fetchWikimediaThumbnail(query, targetEl) {
         if (!page || !page.imageinfo || !page.imageinfo.length) return;
 
         const imageUrl = page.imageinfo[0].thumburl || page.imageinfo[0].url;
-        targetEl.innerHTML = `<img src="${imageUrl}" alt="${query.replace(/"/g, '&quot;')}" loading="lazy">`;
+        const descriptionUrl = page.imageinfo[0].descriptionurl || `https://commons.wikimedia.org/wiki/${encodeURIComponent(fileTitle)}`;
+        const meta = page.imageinfo[0].extmetadata || {};
+
+        let author = meta.Artist ? meta.Artist.value.replace(/<[^>]*>/g, "").trim() : "Unbekannt";
+        if (!author || author.length > 100) author = "Unbekannt";
+
+        const license = meta.LicenseShortName ? meta.LicenseShortName.value : "Freie Lizenz";
+        const displayTitle = fileTitle.replace(/^(File:|Datei:)/i, "");
+
+        if (targetEl && document.body.contains(targetEl)) {
+            targetEl.innerHTML = `
+                <a href="${descriptionUrl}" target="_blank" rel="noopener noreferrer" style="display:block; line-height:0;">
+                    <img src="${imageUrl}" alt="${query.replace(/"/g, '&quot;')}" loading="lazy">
+                </a>
+                <div class="wm-credit">
+                    <a href="${descriptionUrl}" target="_blank" rel="noopener noreferrer">${displayTitle}</a>
+                    · ${author} ·
+                    <a href="${descriptionUrl}" target="_blank" rel="noopener noreferrer">${license}</a>
+                </div>
+            `;
+        }
     } catch (e) {
         console.warn("Thumbnail-Ladefehler:", e);
     }
 }
 
-// ==========================================
-// RECIPE CARDS (Rezepte)
-// ==========================================
 function parseAndRenderRecipe(text, bubbleElement) {
-    const match = text.match(/\[RECIPE\]([\s\S]*?)(\[\/RECIPE\]|$)/i);
-    if (!match) return false;
+    if (!/\[RECIPE\]/i.test(text)) return false;
 
-    let r;
-    try {
-        let raw = match[1].trim().replace(/\[\/RECIPE\]\s*$/i, "").trim();
-        r = JSON.parse(raw);
-    } catch (e) {
-        console.error("Rezept-Parsing fehlgeschlagen", e);
-        return false;
-    }
+    const r = extractBalancedJson(text, "[RECIPE]");
+    if (!r) return false;
 
     bubbleElement.innerHTML = "";
     const wrapper = document.createElement("div");
     wrapper.className = "recipe-wrapper";
 
     wrapper.innerHTML = `
-        <div class="recipe-hero" id="recipe-hero-img">
+        <div class="recipe-hero">
             <div class="trip-stop-img-placeholder"><i class="fas fa-utensils"></i></div>
         </div>
         <div class="recipe-body">
@@ -2041,7 +2077,11 @@ function parseAndRenderRecipe(text, bubbleElement) {
     `;
 
     bubbleElement.appendChild(wrapper);
-    fetchWikimediaThumbnail(r.img || r.title, document.getElementById("recipe-hero-img"));
+
+    // Direkte Referenz statt ID-Suche — eindeutig, auch bei mehreren Rezepten im Chat
+    const heroImgSlot = wrapper.querySelector(".recipe-hero");
+    fetchWikimediaThumbnail(r.img || r.title, heroImgSlot);
+
     chatWindow.scrollTop = chatWindow.scrollHeight;
     return true;
 }
