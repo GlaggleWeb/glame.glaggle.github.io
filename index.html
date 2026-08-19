@@ -388,9 +388,11 @@
 }
 
 .bot .bubble, .user .bubble {
-    width: fit-content;
+    width: auto;
     max-width: 80%;
+    min-width: 120px; /* verhindert das "Wort-Turm"-Problem bei kurzen Zwischenständen */
 }
+        
 .bubble p { margin: 0 0 8px 0; }
 .bubble p:last-child { margin-bottom: 0; }
 .bubble ul, .bubble ol { margin: 8px 0; padding-left: 20px; }
