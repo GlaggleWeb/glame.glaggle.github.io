@@ -1906,6 +1906,44 @@ function downloadCanvasContent() {
     URL.revokeObjectURL(url);
 }
 
+// Extrahiert das erste vollständige, balancierte JSON-Objekt nach einem Tag wie [TRIP]
+function extractBalancedJson(text, startTag) {
+    const startIdx = text.indexOf(startTag);
+    if (startIdx === -1) return null;
+
+    let jsonStart = text.indexOf("{", startIdx);
+    if (jsonStart === -1) return null;
+
+    let depth = 0;
+    let inString = false;
+    let escapeNext = false;
+
+    for (let i = jsonStart; i < text.length; i++) {
+        const ch = text[i];
+
+        if (escapeNext) { escapeNext = false; continue; }
+        if (ch === "\\") { escapeNext = true; continue; }
+        if (ch === '"') { inString = !inString; continue; }
+        if (inString) continue;
+
+        if (ch === "{") depth++;
+        if (ch === "}") {
+            depth--;
+            if (depth === 0) {
+                const jsonStr = text.substring(jsonStart, i + 1);
+                try {
+                    return JSON.parse(jsonStr);
+                } catch (e) {
+                    console.error("JSON-Parsing fehlgeschlagen trotz Balance-Check", e, jsonStr);
+                    return null;
+                }
+            }
+        }
+    }
+
+    // Kein vollständig geschlossenes Objekt gefunden (z.B. noch mitten im Streaming)
+    return null;
+}
 // ==========================================
 // TRIP CARDS (Reiseplaner)
 // ==========================================
