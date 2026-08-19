@@ -1881,53 +1881,23 @@ function downloadCanvasContent() {
     URL.revokeObjectURL(url);
 }
 
-// Extrahiert das erste vollständige, balancierte JSON-Objekt nach einem Tag wie [TRIP]
-function extractBalancedJson(text, startTag) {
-    const startIdx = text.indexOf(startTag);
-    if (startIdx === -1) return null;
-
-    let jsonStart = text.indexOf("{", startIdx);
-    if (jsonStart === -1) return null;
-
-    let depth = 0;
-    let inString = false;
-    let escapeNext = false;
-
-    for (let i = jsonStart; i < text.length; i++) {
-        const ch = text[i];
-
-        if (escapeNext) { escapeNext = false; continue; }
-        if (ch === "\\") { escapeNext = true; continue; }
-        if (ch === '"') { inString = !inString; continue; }
-        if (inString) continue;
-
-        if (ch === "{") depth++;
-        if (ch === "}") {
-            depth--;
-            if (depth === 0) {
-                const jsonStr = text.substring(jsonStart, i + 1);
-                try {
-                    return JSON.parse(jsonStr);
-                } catch (e) {
-                    console.error("JSON-Parsing fehlgeschlagen trotz Balance-Check", e, jsonStr);
-                    return null;
-                }
-            }
-        }
-    }
-
-    // Kein vollständig geschlossenes Objekt gefunden (z.B. noch mitten im Streaming)
-    return null;
-}
-
 // ==========================================
 // TRIP CARDS (Reiseplaner)
 // ==========================================
 function parseAndRenderTrip(text, bubbleElement) {
-    if (!/\[TRIP\]/i.test(text)) return false;
+    const match = text.match(/\[TRIP\]([\s\S]*?)(\[\/TRIP\]|$)/i);
+    if (!match) return false;
 
-    const tripData = extractBalancedJson(text, "[TRIP]");
-    if (!tripData) return false;
+    let tripData;
+    try {
+        let raw = match[1].trim();
+        // Falls das Modell trotzdem einen schließenden Tag mitschickt, sauber abschneiden
+        raw = raw.replace(/\[\/TRIP\]\s*$/i, "").trim();
+        tripData = JSON.parse(raw);
+    } catch (e) {
+        console.error("Trip-Parsing fehlgeschlagen", e);
+        return false;
+    }
 
     bubbleElement.innerHTML = "";
     const wrapper = document.createElement("div");
@@ -1973,7 +1943,7 @@ function parseAndRenderTrip(text, bubbleElement) {
             const stopCard = document.createElement("div");
             stopCard.className = "trip-stop-card";
             stopCard.innerHTML = `
-                <div class="trip-stop-img">
+                <div class="trip-stop-img" data-query="${(stop.img || stop.name).replace(/"/g, '&quot;')}">
                     <div class="trip-stop-img-placeholder"><i class="fas fa-image"></i></div>
                 </div>
                 <div class="trip-stop-info">
@@ -1984,6 +1954,7 @@ function parseAndRenderTrip(text, bubbleElement) {
             `;
             stopsList.appendChild(stopCard);
 
+            // Bild asynchron nachladen
             const imgSlot = stopCard.querySelector(".trip-stop-img");
             fetchWikimediaThumbnail(stop.img || stop.name, imgSlot);
         });
@@ -1999,14 +1970,48 @@ function parseAndRenderTrip(text, bubbleElement) {
     return true;
 }
 
+// Leichtgewichtige Variante von fetchWikimediaImage: lädt nur das Thumbnail in ein Ziel-Element
+async function fetchWikimediaThumbnail(query, targetEl) {
+    try {
+        const projectAgent = "Glame_AI_Pro_1.0_(https_glaggle_ch;_info_glaggle_ch)";
+        const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srnamespace=6&format=json&origin=*&srlimit=1&useragent=${projectAgent}`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+
+        if (!searchData.query || !searchData.query.search || !searchData.query.search.length) return;
+        const fileTitle = searchData.query.search[0].title;
+
+        const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(fileTitle)}&prop=imageinfo&iiprop=url&iiurlwidth=400&format=json&origin=*&useragent=${projectAgent}`;
+        const infoRes = await fetch(infoUrl);
+        const infoData = await infoRes.json();
+
+        const pages = infoData.query.pages;
+        if (!pages) return;
+        const page = Object.values(pages)[0];
+        if (!page || !page.imageinfo || !page.imageinfo.length) return;
+
+        const imageUrl = page.imageinfo[0].thumburl || page.imageinfo[0].url;
+        targetEl.innerHTML = `<img src="${imageUrl}" alt="${query.replace(/"/g, '&quot;')}" loading="lazy">`;
+    } catch (e) {
+        console.warn("Thumbnail-Ladefehler:", e);
+    }
+}
+
 // ==========================================
 // RECIPE CARDS (Rezepte)
 // ==========================================
 function parseAndRenderRecipe(text, bubbleElement) {
-    if (!/\[RECIPE\]/i.test(text)) return false;
+    const match = text.match(/\[RECIPE\]([\s\S]*?)(\[\/RECIPE\]|$)/i);
+    if (!match) return false;
 
-    const r = extractBalancedJson(text, "[RECIPE]");
-    if (!r) return false;
+    let r;
+    try {
+        let raw = match[1].trim().replace(/\[\/RECIPE\]\s*$/i, "").trim();
+        r = JSON.parse(raw);
+    } catch (e) {
+        console.error("Rezept-Parsing fehlgeschlagen", e);
+        return false;
+    }
 
     bubbleElement.innerHTML = "";
     const wrapper = document.createElement("div");
