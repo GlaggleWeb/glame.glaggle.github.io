@@ -967,7 +967,7 @@ async function generateExpertDraft(userPrompt) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                model: "@cf/swiss-ai/apertus-v1.5-8b",
+                model: "@cf/mistral/mistral-7b-instruct-v0.2-lora",
                 stream: false,
                 messages: [
                     { 
@@ -1087,7 +1087,7 @@ Erstelle 5 Fragen mit je 4 Antwortmöglichkeiten, "correct" ist der Index (0-3) 
     };
 
   // Websearch-Toggle entfernen, da Cloudflare Workers AI das browser_search-Tool nicht nutzt
-    payload.model = "@cf/swiss-ai/apertus-v1.5-8b"; 
+    payload.model = "@cf/mistral/mistral-7b-instruct-v0.2-lora"; 
 
     try {
         const res = await fetch("https://shiny-credit-811f.rhpjmf7t2s.workers.dev", {
@@ -1199,7 +1199,7 @@ allChats[currentId].date = Date.now();
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        model: "@cf/meta/llama-3.1-8b-instruct",
+                        model: "@cf/mistral/mistral-7b-instruct-v0.2-lora",
                         stream: false,
                         messages: [
                             { role: "system", content: "Gib mir einen kurzen Titel (max 2 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel. (Wenn die nafrage zb auf English ist dann nehem auch einen Englishen Titel)" },
