@@ -962,11 +962,12 @@ async function confirmLoginLink() {
     }
 
 async function generateExpertDraft(userPrompt) {
-    const res = await fetch("https://shiny-credit-811f.rhpjmf7t2s.workers.dev", {
+    try {
+        const res = await fetch("https://shiny-credit-811f.rhpjmf7t2s.workers.dev", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                model: "@cf/swiss-ai/apertus-v1.5-8b", // Cloudflare-Modell
+                model: "@cf/swiss-ai/apertus-v1.5-8b",
                 stream: false,
                 messages: [
                     { 
