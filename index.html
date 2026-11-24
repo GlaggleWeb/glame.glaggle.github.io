@@ -714,13 +714,6 @@
     if (!allChats[currentId]) createNewChat();
     checkAuth();
 
-    // Theme Logic
-    document.getElementById("theme-select").onchange = (e) => {
-        const val = e.target.value;
-        if(val === "auto") document.body.removeAttribute("data-theme");
-        else document.body.setAttribute("data-theme", val);
-        localStorage.setItem("glame_v4_theme", val);
-    };
 
     userInput.addEventListener("input", function() {
         this.style.height = "auto";
