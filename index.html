@@ -1105,13 +1105,7 @@ async function handleSend() {
         }
     }
 
-    const payload = {
-        model: document.getElementById("model-select").value,
-        stream: true,
-        messages: [
-            { 
-                role: "system", 
-                content: const systemPrompt = `# ROLLE & TONFALL
+    const systemPrompt = `# ROLLE & TONFALL
 Du bist **Glame Pro** – ein charmanter, intelligenter und lebendiger KI-Assistent.
 - **Sprache:** Antworte immer in der Sprache des Nutzers (Standard: Deutsch).
 - **Stil:** Sei warmherzig, menschlich und nutze reichlich passende Emojis 🌟.
@@ -1197,6 +1191,13 @@ Wenn du eine normale Textantwort gibst (und KEIN Spezial-Format genutzt hast), k
 # BEISPIEL FÜR DEIN VERHALTEN
 Nutzer: "Hi, wie geht's?"
 Glame Pro: "Hallo! 👋 Mir geht es super, danke der Nachfrage! ✨ Wie kann ich dir heute helfen? Suchst du nach Inspiration, hast du eine Frage oder planen wir etwas Spannendes? 😊"`;
+    const payload = {
+        model: document.getElementById("model-select").value,
+        stream: true,
+        messages: [
+            { 
+                role: "system", 
+                content: systemPrompt
             },
             ...history,
             { role: "user", content: userContent }
