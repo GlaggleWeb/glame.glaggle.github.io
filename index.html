@@ -554,6 +554,29 @@
     50% { border-color: rgba(99, 102, 241, 1); }
     100% { border-color: rgba(99, 102, 241, 0.4); }
 }
+        .inline-controls {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    border-right: 1px solid var(--border-color, #333);
+    padding-right: 6px;
+    margin-right: 4px;
+}
+
+.control-dropdown-mini {
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-size: 0.8rem;
+    padding: 4px;
+    outline: none;
+    cursor: pointer;
+}
+
+.control-dropdown-mini option {
+    background: var(--bg-color, #1e1e1e);
+    color: #fff;
+}
     </style>
 </head>
 <body data-theme="auto">
@@ -579,31 +602,25 @@
         <div id="chat-window"></div>
 
 <div id="input-wrapper">
-    <!-- NEU: Toolbar für Modelle, Modi & Denkstufe -->
-    <div class="chat-controls-bar">
-        <select id="model-select" class="control-dropdown" onchange="handleModelChange()">
-            <option value="@cf/mistral/mistral-7b-instruct-v0.2-lora">Glame Standard</option>
-            <option value="@cf/meta/llama-3-8b-instruct">Glame Llama 3</option>
-            <option value="@cf/google/gemma-7b-it">Glame Gemma</option>
-            <option value="@cf/qwen/qwen1.5-14b-chat">Glame Qwen (Deep)</option>
-        </select>
-
-        <select id="mode-select" class="control-dropdown">
-            <option value="chat">Standard Chat</option>
-            <option value="canvas">Canvas (Code/Story)</option>
-            <option value="trip">Reise-Planer [TRIP]</option>
-            <option value="recipe">Rezept-Modus [RECIPE]</option>
-            <option value="quiz">Quiz-Modus [QUIZ]</option>
-        </select>
-
-        <select id="thinking-level" class="control-dropdown" style="display: none;">
-            <option value="low">Denkstufe: Schnell</option>
-            <option value="medium" selected>Denkstufe: Normal</option>
-            <option value="high">Denkstufe: Tief (Deep)</option>
-        </select>
-    </div>
-
     <div class="search-bar-container">
+        <!-- Kompakte Controls links in der Bar -->
+        <div class="inline-controls">
+            <select id="model-select" class="control-dropdown-mini" onchange="handleModelChange()" title="Modell wählen">
+                <option value="@cf/google/gemma-4-26b-a4b-it">Standard</option>
+                <option value="@cf/meta/llama-4-scout-17b-16e-instruct">Llama 4</option>
+                <option value="@cf/mistral/mistral-7b-instruct-v0.2-lora">Mistral</option>
+                <option value="@cf/qwen/qwen3.8-27b">Qwen</option>
+            </select>
+
+            <select id="mode-select" class="control-dropdown-mini" title="Modus wählen">
+                <option value="chat">Chat</option>
+                <option value="canvas">Canvas</option>
+                <option value="trip">Reise</option>
+                <option value="recipe">Rezept</option>
+                <option value="quiz">Quiz</option>
+            </select>
+        </div>
+
         <!-- Bildvorschau -->
         <div id="image-preview-box">
             <img id="image-preview-img" src="" alt="Vorschau">
