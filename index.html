@@ -502,6 +502,58 @@
     background: var(--card-bg);
 }
 .wm-credit a { color: inherit; text-decoration: underline; }
+
+        .chat-controls-bar {
+    display: flex;
+    gap: 8px;
+    padding: 0 4px 8px 4px;
+    flex-wrap: wrap;
+}
+
+.control-dropdown {
+    background: var(--bg-secondary, #2a2a2a);
+    color: var(--text-color, #fff);
+    border: 1px solid var(--border-color, #444);
+    border-radius: 8px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Animations-Container für Canvas / Trip / Rezept */
+.builder-animation-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(var(--primary-rgb, 99, 102, 241), 0.1);
+    border: 1px dashed var(--primary, #6366f1);
+    border-radius: 12px;
+    margin: 8px 0;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    animation: pulse-border 1.5s infinite;
+}
+
+.builder-spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: var(--primary, #6366f1);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-border {
+    0% { border-color: rgba(99, 102, 241, 0.4); }
+    50% { border-color: rgba(99, 102, 241, 1); }
+    100% { border-color: rgba(99, 102, 241, 0.4); }
+}
     </style>
 </head>
 <body data-theme="auto">
@@ -526,27 +578,50 @@
     <div id="chat-column">
         <div id="chat-window"></div>
 
-        <div id="input-wrapper">
-            <div class="search-bar-container">
-                <!-- Bildvorschau -->
-                <div id="image-preview-box">
-                    <img id="image-preview-img" src="" alt="Vorschau">
-                    <i class="fas fa-times-circle close-preview" onclick="clearImage()"></i>
-                </div>
+<div id="input-wrapper">
+    <!-- NEU: Toolbar für Modelle, Modi & Denkstufe -->
+    <div class="chat-controls-bar">
+        <select id="model-select" class="control-dropdown" onchange="handleModelChange()">
+            <option value="@cf/mistral/mistral-7b-instruct-v0.2-lora">Glame Standard</option>
+            <option value="@cf/meta/llama-3-8b-instruct">Glame Llama 3</option>
+            <option value="@cf/google/gemma-7b-it">Glame Gemma</option>
+            <option value="@cf/qwen/qwen1.5-14b-chat">Glame Qwen (Deep)</option>
+        </select>
 
-                <!-- Hidden File Input für Bilder -->
-                <input type="file" id="image-file-input" accept="image/*" style="display: none;" onchange="handleImageSelection(event)">
-                
-                <button class="icon-btn" onclick="document.getElementById('image-file-input').click()" title="Bild anhängen">
-                    <i class="fas fa-paperclip"></i>
-                </button>
-                
-                <textarea id="user-input" placeholder="Ask Glame..." rows="1"></textarea>
-                
-                <button class="icon-btn" id="mic-btn"><i class="fas fa-microphone"></i></button>
-                <button class="icon-btn" id="send-btn" style="color: var(--primary)"><i class="fas fa-paper-plane"></i></button>
-            </div>
+        <select id="mode-select" class="control-dropdown">
+            <option value="chat">Standard Chat</option>
+            <option value="canvas">Canvas (Code/Story)</option>
+            <option value="trip">Reise-Planer [TRIP]</option>
+            <option value="recipe">Rezept-Modus [RECIPE]</option>
+            <option value="quiz">Quiz-Modus [QUIZ]</option>
+        </select>
+
+        <select id="thinking-level" class="control-dropdown" style="display: none;">
+            <option value="low">Denkstufe: Schnell</option>
+            <option value="medium" selected>Denkstufe: Normal</option>
+            <option value="high">Denkstufe: Tief (Deep)</option>
+        </select>
+    </div>
+
+    <div class="search-bar-container">
+        <!-- Bildvorschau -->
+        <div id="image-preview-box">
+            <img id="image-preview-img" src="" alt="Vorschau">
+            <i class="fas fa-times-circle close-preview" onclick="clearImage()"></i>
         </div>
+
+        <input type="file" id="image-file-input" accept="image/*" style="display: none;" onchange="handleImageSelection(event)">
+        
+        <button class="icon-btn" onclick="document.getElementById('image-file-input').click()" title="Bild anhängen">
+            <i class="fas fa-paperclip"></i>
+        </button>
+        
+        <textarea id="user-input" placeholder="Ask Glame..." rows="1"></textarea>
+        
+        <button class="icon-btn" id="mic-btn"><i class="fas fa-microphone"></i></button>
+        <button class="icon-btn" id="send-btn" style="color: var(--primary)" onclick="handleSend()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
     </div>
 
     <div id="canvas-panel">
@@ -571,48 +646,6 @@
             
         </main>
 
-        <aside class="sidebar collapsed-right" id="sidebar-right">
-            <h3 style="margin-bottom: 20px;">Einstellungen</h3>
-
-            <div class="input-options">
-    <label class="toggle-switch">
-        <input type="checkbox" id="deep-research-toggle">
-        <span class="slider"></span> 
-        <small>Deep Research Modus</small>
-    </label>
-</div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <span>🌐 Internet-Suche</span>
-                <input type="checkbox" id="search-toggle">
-            </div>
-
-            <div style="background: rgba(0, 127, 255, 0.1); border: 1px solid var(--primary); border-radius: 15px; padding: 15px; margin-top: 5px; margin-bottom: 5px;">
-                <p style="font-weight: bold; color: var(--primary); margin-bottom: 5px;">📌 WICHTIGE INFO</p>
-                <p style="font-size: 0.85rem; line-height: 1.4; color: var(--text-color);">
-                    Die Internet-Suche geht nur mit den GPT Modellen! Die Internet Suche ist nicht mit Deep Research kombinierbar!
-                </p>
-            </div>
-            
-            <div class="setting-group">
-                <span class="setting-label">KI Modell</span>
-                <select id="model-select">
-                    <option value="openai/gpt-oss-20b">GPT OSS 20B</option>
-                    <option value="openai/gpt-oss-120b">GPT OSS 120B</option>
-                    <option value="qwen/qwen3.6-27b">Qwen 3.6 27B</option>
-                </select>
-            </div>
-
-            <div class="setting-group">
-                <span class="setting-label">Erscheinungsbild</span>
-                <select id="theme-select">
-                    <option value="auto">System folgen</option>
-                    <option value="light">Hell</option>
-                    <option value="dark">Dunkel</option>
-                </select>
-            </div>
-        </aside>
-    </div>
 
 <!-- Login Modal -->
 <div id="auth-modal" class="modal-overlay" style="display: none;">
@@ -961,41 +994,46 @@ async function confirmLoginLink() {
         }
     }
 
-async function generateExpertDraft(userPrompt) {
-    try {
-        const res = await fetch("https://shiny-credit-811f.rhpjmf7t2s.workers.dev", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                model: "@cf/mistral/mistral-7b-instruct-v0.2-lora",
-                stream: false,
-                messages: [
-                    { 
-                        role: "system", 
-                        content: "Du bist ein Experte für tiefgründige Recherche. Erstelle eine detaillierte, inhaltlich fundierte Antwort auf die Nutzerfrage. Sammle alle Fakten und Argumente, bleibe sachlich und präzise." 
-                    },
-                    { role: "user", content: userPrompt }
-                ]
-            })
-        });
 
-        if (res.status === 429) {
-            showErrorNotification("Dein Limit ist vorübergehend erreicht. Bitte warte ein paar Minuten!");
-            return null;
-        }
-
-        if (!res.ok) return null;
-
-        const data = await res.json();
-        return data.response ?? data.choices?.[0]?.message?.content;
-    } catch (e) {
-        console.error("Fehler beim Generieren des Entwurfs:", e);
-        return null;
-    }
-}
     // ==========================================
     // CHAT ENGINE, TYPEWRITER EFFECT & UI
     // ==========================================
+
+    // Zeigt die Denkstufe nur bei unterstützten Modellen an (z.B. Qwen oder Llama)
+function handleModelChange() {
+    const selectedModel = document.getElementById("model-select").value;
+    const thinkingSelect = document.getElementById("thinking-level");
+    
+    // Beispiel: Qwen und Llama unterstützen Tiefen-Denken
+    if (selectedModel.includes("qwen") || selectedModel.includes("llama")) {
+        thinkingSelect.style.display = "inline-block";
+    } else {
+        thinkingSelect.style.display = "none";
+    }
+}
+
+// Hilfsfunktion für wechselnde Animations-Texte
+async function showBuilderAnimation(bubbleElement, type) {
+    const texts = {
+        canvas: ["App wird analysiert...", "Struktur wird aufgebaut...", "Code & Vorschau werden generiert..."],
+        trip: ["Reiseziele werden geprüft...", "Route wird berechnet...", "Tagespläne werden optimiert..."],
+        recipe: ["Zutaten werden abgestimmt...", "Kochanleitung wird strukturiert...", "Rezept wird finalisiert..."],
+        quiz: ["Fragen werden erstellt...", "Antwortmöglichkeiten werden gemischt...", "Quiz wird vorbereitet..."]
+    };
+
+    const steps = texts[type] || ["Inhalt wird konstruiert...", "Fast fertig..."];
+    
+    for (let i = 0; i < steps.length; i++) {
+        bubbleElement.innerHTML = `
+            <div class="builder-animation-box">
+                <div class="builder-spinner"></div>
+                <span>${steps[i]}</span>
+            </div>
+        `;
+        await new Promise(r => setTimeout(r, 900)); // Wechselt alle 0.9 Sekunden den Text
+    }
+}
+    
 async function handleSend() {
     const text = userInput.value.trim();
     if ((!text && !attachedImage) || isTyping) return;
@@ -1008,15 +1046,13 @@ async function handleSend() {
     if (isDeepResearch) {
         addMsgUI("bot", "🧠 *Recherchiere und erstelle Experten-Entwurf...*");
         try {
-            // ... direkt nach dem Aufruf von generateExpertDraft
-expertDraft = await generateExpertDraft(text);
+            expertDraft = await generateExpertDraft(text);
 
-// HIER DIE EINFÜGUNG:
-if (expertDraft === null) { 
-    showErrorNotification("Dein Limit ist vorübergehend erreicht. Bitte warte ein paar Minuten!");
-    isTyping = false;
-    return; // Bricht die Funktion hier ab, damit es nicht weitergeht
-}
+            if (expertDraft === null) { 
+                showErrorNotification("Dein Limit ist vorübergehend erreicht. Bitte warte ein paar Minuten!");
+                isTyping = false;
+                return; // Bricht die Funktion hier ab, damit es nicht weitergeht
+            }
         } catch (e) {
             console.error("Research failed", e);
         }
@@ -1058,35 +1094,36 @@ if (expertDraft === null) {
             userContent.push({ type: "text", text: researchPrompt });
         }
     }
-const payload = {
+
+    const payload = {
         model: document.getElementById("model-select").value,
         stream: true,
         messages: [
             { 
                 role: "system", 
-                content: `Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte in der Sprache, in der der Nutzer dich angesprochen hat. Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören. WICHTIG: Wenn das Thema deiner Antwort sich gut mit einem Bild veranschaulichen lässt (nur bei ca. 20-50% der Antworten, wenn es wirklich sinnvoll ist, z.B. bei Orten, Tieren, Personen, Objekten, historischen Ereignissen), füge GANZ AM ENDE deiner Antwort in einer EIGENEN, LETZTEN Zeile GENAU folgendes Format hinzu, OHNE Punkt oder sonstige Zeichen danach: [IMG: kurzer englischer Suchbegriff] . Bei reinen Text-/Code-/abstrakten Themen lass das komplett weg. Wenn es sinnvolle, naheliegende Folgefragen gibt die der User stellen könnte (nur bei ca. 40-50% der Antworten, wenn wirklich hilfreich), füge GANZ AM ENDE (nach einem eventuellen [IMG:]-Tag) eine EIGENE, LETZTE Zeile hinzu im Format: [SUGGEST: Frage 1 | Frage 2 | Frage 3] mit 2-3 kurzen, prägnanten Folgefragen aus Sicht des Users. Bei einfachen/abgeschlossenen Antworten lass das komplett weg.
+                content: `Du bist Glame Pro. Charmant, intelligent und lebendig. Antworte in der Sprache, in der der Nutzer dich angesprochen hat (Wenn du dir nicht sicher bist, ist es Deutsch). Verwende liebend gerne Markdown (wie Tabellen, Listen, fetten Text und Code-Blöcke) und bringe reichlich Emojis ein, um dich menschlich und warmherzig anzuhören. WICHTIG: Wenn das Thema deiner Antwort sich gut mit einem Bild veranschaulichen lässt (nur bei ca. 20-50% der Antworten, wenn es wirklich sinnvoll ist, z.B. bei Orten, Tieren, Personen, Objekten, historischen Ereignissen), füge GANZ AM ENDE deiner Antwort in einer EIGENEN, LETZTEN Zeile GENAU folgendes Format hinzu, OHNE Punkt oder sonstige Zeichen danach: [IMG: kurzer englischer Suchbegriff] . Bei reinen Text-/Code-/abstrakten Themen lass das komplett weg. Wenn es sinnvolle, naheliegende Folgefragen gibt die der User stellen könnte (nur bei ca. 40-50% der Antworten, wenn wirklich hilfreich), füge GANZ AM ENDE (nach einem eventuellen [IMG:]-Tag) eine EIGENE, LETZTE Zeile hinzu im Format: [SUGGEST: Frage 1 | Frage 2 | Frage 3] mit 2-3 kurzen, prägnanten Folgefragen aus Sicht des Users. Bei einfachen/abgeschlossenen Antworten lass das komplett weg.
 
-Wenn der User explizit nach einer Reiseplanung, Reiseroute, einem Trip oder Sightseeing-Plan fragt, antworte NUR mit einem Block im Format (kein Text davor oder danach):
+Wenn der User explizit nach einer Reiseplanung, Reiseroute, einem Trip oder Sightseeing-Plan fragt, antworte NUR mit einem Block im Format (kein Text davor oder danach, und genau in DIESEM Format):
 [TRIP]
 {"destination": "Stadtname, Land", "days": [{"day": "Tag 1", "title": "Kurzer Titel für den Tag", "stops": [{"name": "Ort/Aktivität", "time": "z.B. 9:00 Uhr oder Vormittag", "desc": "1-2 Sätze Beschreibung", "img": "kurzer englischer Bildsuchbegriff"}]}]}
 Erstelle für jeden Tag 3-5 Stops mit unterschiedlichen img-Suchbegriffen (spezifisch, z.B. "Senso-ji Temple Tokyo" statt nur "temple").
 
-Wenn der User explizit nach einem Rezept, Kochanleitung oder Essen zum Nachkochen fragt, antworte NUR mit einem Block im Format (kein Text davor oder danach):
+Wenn der User explizit nach einem Rezept, Kochanleitung oder Essen zum Nachkochen fragt, antworte NUR mit einem Block im Format (kein Text davor oder danach, und genau in DIESEM Format):
 [RECIPE]
 {"title": "Rezeptname", "img": "kurzer englischer Bildsuchbegriff für das fertige Gericht", "servings": 4, "time": "z.B. 30 Min.", "ingredients": ["200g Mehl", "2 Eier", "..."], "steps": ["Schritt 1 Beschreibung", "Schritt 2 Beschreibung", "..."]}
 
-Wenn der User explizit nach einem Quiz, Test oder Fragen zum Üben fragt, antworte NUR mit einem Block im Format:
+Wenn der User explizit nach einem Quiz, Test oder Fragen zum Üben fragt, antworte NUR mit einem Block im Format, nur in DIESEM Format:
 [QUIZ]
 {"title": "Titel des Quiz", "questions": [{"q": "Frage 1?", "options": ["A", "B", "C", "D"], "correct": 0}, {"q": "Frage 2?", "options": ["A", "B", "C", "D"], "correct": 2}]}
 [/QUIZ]
 Erstelle 5 Fragen mit je 4 Antwortmöglichkeiten, "correct" ist der Index (0-3) der richtigen Antwort. Kein Text davor oder danach, nur den Block.`
             },
-            ...history, // Original History bleibt erhalten
+            ...history,
             { role: "user", content: userContent }
         ]
     };
 
-  // Websearch-Toggle entfernen, da Cloudflare Workers AI das browser_search-Tool nicht nutzt
+    // Websearch-Toggle entfernen, da Cloudflare Workers AI das browser_search-Tool nicht nutzt
     payload.model = "@cf/mistral/mistral-7b-instruct-v0.2-lora"; 
 
     try {
@@ -1127,7 +1164,6 @@ Erstelle 5 Fragen mit je 4 Antwortmöglichkeiten, "correct" ist der Index (0-3) 
 
                 try {
                     const json = JSON.parse(l);
-                    // Liest das Cloudflare-Format (.response) oder OpenAI-Format aus
                     const content = json.response ?? json.choices?.[0]?.delta?.content ?? "";
                     if (content) {
                         fullReply += content;
@@ -1137,65 +1173,64 @@ Erstelle 5 Fragen mit je 4 Antwortmöglichkeiten, "correct" ist der Index (0-3) 
                 } catch (e) {}
             }
         }
-await flushTypewriter(fullReply);
+        
+        await flushTypewriter(fullReply);
 
+        const canvasData = detectCanvasContent(fullReply);
+        let autoTitle = "";
+        if (canvasData) {
+            let chatSummary;
+            if (canvasData.type === "code") {
+                chatSummary = fullReply.split("```")[0].trim() || "Hier ist dein Code:";
+            } else {
+                chatSummary = fullReply.split("\n\n")[0].trim();
+            }
+            updateBubbleContent(currentTypingElement, chatSummary);
 
-const canvasData = detectCanvasContent(fullReply);
-let autoTitle = "";
-if (canvasData) {
-    let chatSummary;
-    if (canvasData.type === "code") {
-        chatSummary = fullReply.split("```")[0].trim() || "Hier ist dein Code:";
-    } else {
-        chatSummary = fullReply.split("\n\n")[0].trim();
-    }
-    updateBubbleContent(currentTypingElement, chatSummary);
+            autoTitle = canvasData.type === "code"
+                ? `${(canvasData.language || "Code").toUpperCase()}-Snippet`
+                : "Generierte Geschichte";
 
-    autoTitle = canvasData.type === "code"
-        ? `${(canvasData.language || "Code").toUpperCase()}-Snippet`
-        : "Generierte Geschichte";
+            openCanvas(canvasData, autoTitle);
+            insertCanvasFileCard(currentTypingElement, { ...canvasData, title: autoTitle });
+            fullReply = chatSummary;
+        }
 
-    openCanvas(canvasData, autoTitle);
-    insertCanvasFileCard(currentTypingElement, { ...canvasData, title: autoTitle });
-    fullReply = chatSummary;
-}
-// Spezial-Formate haben Vorrang: wenn erkannt, werden IMG/SUGGEST übersprungen
-const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
-const isTrip = !isQuiz && parseAndRenderTrip(fullReply, currentTypingElement);
-const isRecipe = !isQuiz && !isTrip && parseAndRenderRecipe(fullReply, currentTypingElement);
+        // Spezial-Formate haben Vorrang
+        const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
+        const isTrip = !isQuiz && parseAndRenderTrip(fullReply, currentTypingElement);
+        const isRecipe = !isQuiz && !isTrip && parseAndRenderRecipe(fullReply, currentTypingElement);
 
-if (!isQuiz && !isTrip && !isRecipe) {
-    // Suggestion-Tag ZUERST entfernen (kann ganz am Ende stehen)
-    const { cleanedText: replyWithoutSuggestions, suggestions } = parseSuggestions(fullReply);
-    fullReply = replyWithoutSuggestions;
+        if (!isQuiz && !isTrip && !isRecipe) {
+            const { cleanedText: replyWithoutSuggestions, suggestions } = parseSuggestions(fullReply);
+            fullReply = replyWithoutSuggestions;
 
-    // Bild-Tag JETZT suchen — muss nicht mehr am Stringende stehen, nur noch am Zeilenende
-    const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/im);
-    if (imgMatch) {
-        const searchTerm = imgMatch[1].trim();
-        const cleanedReply = fullReply.replace(/\[IMG:\s*.+?\]\s*$/im, "").trim();
-        updateBubbleContent(currentTypingElement, cleanedReply);
-        fetchWikimediaImage(searchTerm, currentTypingElement);
-        fullReply = cleanedReply;
-    }
+            const imgMatch = fullReply.match(/\[IMG:\s*(.+?)\]\s*$/im);
+            if (imgMatch) {
+                const searchTerm = imgMatch[1].trim();
+                const cleanedReply = fullReply.replace(/\[IMG:\s*.+?\]\s*$/im, "").trim();
+                updateBubbleContent(currentTypingElement, cleanedReply);
+                fetchWikimediaImage(searchTerm, currentTypingElement);
+                fullReply = cleanedReply;
+            }
 
-    // Suggestions jetzt rendern (Bubble-Inhalt ist jetzt der finale Text ohne Tags)
-    updateBubbleContent(currentTypingElement, fullReply);
-    if (suggestions.length) {
-        renderSuggestions(suggestions, currentTypingElement);
-    }
-}
+            updateBubbleContent(currentTypingElement, fullReply);
+            if (suggestions.length) {
+                renderSuggestions(suggestions, currentTypingElement);
+            }
+        }
+
         allChats[currentId].messages.push({ role: "user", content: text, image: currentImg });
-allChats[currentId].messages.push({
-    role: "assistant",
-    content: fullReply,
-    canvasData: canvasData ? { type: canvasData.type, language: canvasData.language, content: canvasData.content, title: autoTitle } : null
-});
-allChats[currentId].date = Date.now();
+        allChats[currentId].messages.push({
+            role: "assistant",
+            content: fullReply,
+            canvasData: canvasData ? { type: canvasData.type, language: canvasData.language, content: canvasData.content, title: autoTitle } : null
+        });
+        allChats[currentId].date = Date.now();
 
         if (allChats[currentId].title === "Neuer Chat") {
             try {
-                const nameRes = await fetch("https://shiny-credit-811f.rhpjmf7t2s.workers.dev", {
+                const nameRes = await fetch("[https://shiny-credit-811f.rhpjmf7t2s.workers.dev](https://shiny-credit-811f.rhpjmf7t2s.workers.dev)", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -1225,6 +1260,8 @@ allChats[currentId].date = Date.now();
         isTyping = false;
     }
 }
+await flushTypewriter(fullReply);
+
     // ==========================================
     // HIGH-PERFORMANCE LIVE TYPEWRITER
     // ==========================================
