@@ -1078,9 +1078,29 @@ async function handleSend() {
     const currentImg = attachedImage;
     clearImage(); // Leert die Vorschau nach dem Senden
 
-    const loadingIndicator = showLoadingIndicator();
-    let fullReply = "";
+   const loadingIndicator = showLoadingIndicator();
+let fullReply = "";
 
+// Builder-Typ anhand der Anfrage erkennen
+const lowerText = text.toLowerCase();
+
+let builderType = null;
+
+if (/website|app|html|javascript|programm|code|canvas/.test(lowerText)) {
+    builderType = "canvas";
+} else if (/reise|urlaub|trip|sightseeing|reiseplan/.test(lowerText)) {
+    builderType = "trip";
+} else if (/rezept|kochen|backen|zutaten/.test(lowerText)) {
+    builderType = "recipe";
+} else if (/quiz|test|prüfungsfragen|übungsfragen/.test(lowerText)) {
+    builderType = "quiz";
+}
+
+// Animation direkt starten
+if (builderType) {
+    const loadingBubble = loadingIndicator.querySelector(".bubble");
+    showBuilderAnimation(loadingBubble, builderType);
+}
     // Hier bleibt dein Original-History-Handling exakt wie gehabt
     const history = allChats[currentId].messages.slice(-8).map(m => ({ 
         role: m.role, 
@@ -1204,8 +1224,7 @@ Glame Pro: "Hallo! 👋 Mir geht es super, danke der Nachfrage! ✨ Wie kann ich
         ]
     };
 
-    // Websearch-Toggle entfernen, da Cloudflare Workers AI das browser_search-Tool nicht nutzt
-    payload.model = "@cf/mistral/mistral-7b-instruct-v0.2-lora"; 
+    payload.model = "@cf/google/gemma-4-26b-a4b-it"; 
 
     try {
         const res = await fetch("https://shiny-credit-811f.rhpjmf7t2s.workers.dev", {
@@ -1311,18 +1330,27 @@ Glame Pro: "Hallo! 👋 Mir geht es super, danke der Nachfrage! ✨ Wie kann ich
 
         if (allChats[currentId].title === "Neuer Chat") {
             try {
-                const nameRes = await fetch("[https://shiny-credit-811f.rhpjmf7t2s.workers.dev](https://shiny-credit-811f.rhpjmf7t2s.workers.dev)", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        model: "@cf/mistral/mistral-7b-instruct-v0.2-lora",
-                        stream: false,
-                        messages: [
-                            { role: "system", content: "Gib mir einen kurzen Titel (max 2 Wörter) für diesen Chat basierend auf der Frage. Antworte NUR mit dem Titel. (Wenn die nafrage zb auf English ist dann nehem auch einen Englishen Titel)" },
-                            { role: "user", content: text }
-                        ]
-                    })
-                });
+const nameRes = await fetch(
+    "https://shiny-credit-811f.rhpjmf7t2s.workers.dev",
+    {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            model: "@cf/mistral/mistral-7b-instruct-v0.2-lora",
+            stream: false,
+            messages: [
+                {
+                    role: "system",
+                    content: "Erstelle einen kurzen Chat-Titel mit maximal zwei Wörtern. Verwende die Sprache des Nutzers. Antworte ausschließlich mit dem Titel."
+                },
+                {
+                    role: "user",
+                    content: text
+                }
+            ]
+        })
+    }
+);
                 const nameData = await nameRes.json();
                 const rawTitle = nameData.response ?? nameData.choices?.[0]?.message?.content ?? text.substring(0, 20);
                 allChats[currentId].title = rawTitle.replace(/["']/g, "").trim();
@@ -1723,12 +1751,27 @@ async function fetchWikimediaImage(query, bubbleElement) {
 }
 
 function parseSuggestions(text) {
-    const match = text.match(/\[SUGGEST:\s*(.+?)\]\s*$/i);
-    if (!match) return { cleanedText: text, suggestions: [] };
-    
-    const suggestions = match[1].split("|").map(s => s.trim()).filter(Boolean);
-    const cleanedText = text.replace(/\[SUGGEST:\s*.+?\]\s*$/i, "").trim();
-    return { cleanedText, suggestions };
+    const match = text.match(
+        /\[\s*SUGGEST:\s*([\s\S]*?)\s*\]\s*$/i
+    );
+
+    if (!match) {
+        return { cleanedText: text, suggestions: [] };
+    }
+
+    const suggestions = match[1]
+        .split("|")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+    const cleanedText = text
+        .replace(/\[\s*SUGGEST:\s*[\s\S]*?\s*\]\s*$/i, "")
+        .trim();
+
+    return {
+        cleanedText,
+        suggestions
+    };
 }
 
 function renderSuggestions(suggestions, bubbleElement) {
