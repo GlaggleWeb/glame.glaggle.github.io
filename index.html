@@ -1362,11 +1362,11 @@ if (animationPromise) {
     await animationPromise;
 }
 
-// Ladeanimation entfernen
-loadingIndicator.remove();
+// Ladeanimation NICHT entfernen!
+// Antwort zunächst nur im Hintergrund empfangen.
 
-// Fertige Antwort erstellen
-const botBubble = addMsgUI("bot", "");
+const botBubble = null;
+
 
 // Antwort elegant einblenden
 botBubble.classList.add("answer-fade-in");
