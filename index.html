@@ -805,7 +805,7 @@
 
             // AUTO-SWITCH ZU LLAMA 4 SCOUT WENN BILD HINZUGEFÜGT WIRD
             const modelSelect = document.getElementById("model-select");
-            modelSelect.value = "qwen/qwen3.6-27b";
+            modelSelect.value = "@cf/google/gemma-4-26b-a4b-it";
             
             // Kurzes, leuchtendes Feedback im UI, damit der User den Wechsel bemerkt
             modelSelect.style.boxShadow = "0 0 15px var(--primary)";
@@ -1330,10 +1330,10 @@ Glame Pro: "Hallo! 👋 Mir geht es super, danke der Nachfrage! ✨ Wie kann ich
         }
 
       
-// Ladeanimation NICHT entfernen!
-// Antwort zunächst nur im Hintergrund empfangen.
+const botBubble = loadingIndicator.querySelector(".bubble");
 
-const botBubble = null;
+// Ladeanimation entfernen und Antwort vorbereiten
+botBubble.innerHTML = "";
 
         
         const reader = res.body.getReader();
