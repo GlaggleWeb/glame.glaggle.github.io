@@ -1113,6 +1113,46 @@ async function showBuilderAnimation(bubbleElement, type, isActive) {
         await new Promise(resolve => setTimeout(resolve, 1100));
     }
 }
+
+    const modeInstructions = {
+    chat: `
+Du bist im normalen Chat-Modus.
+Beantworte Fragen natürlich, hilfreich und ausführlich.
+`,
+
+canvas: `
+Du bist im Canvas-Modus.
+
+Deine Aufgabe ist es, vollständige und lauffähige Programme zu erstellen, (ausser der Nutzer bittet dich zb eine Geschichte zu schreiben.)
+
+Regeln:
+- Gib bei HTML-Anwendungen immer ein vollständiges HTML-Dokument aus.
+- Verwende HTML, CSS und JavaScript.
+- Gib den vollständigen Code in einem einzigen Codeblock aus.
+- Verwende keine Platzhalter.
+- Achte auf funktionierende Interaktionen.
+- Der Code soll direkt im Canvas ausführbar sein.
+`
+
+    trip: `
+Du bist im Reiseplaner-Modus.
+Erstelle strukturierte Reisepläne mit Sehenswürdigkeiten und Tagesabläufen.
+Verwende das vorgeschriebene [TRIP]-Format.
+`,
+
+    recipe: `
+Du bist im Rezept-Modus.
+Erstelle verständliche Rezepte mit Zutaten und Zubereitung.
+Verwende das vorgeschriebene [RECIPE]-Format.
+`,
+
+    quiz: `
+Du bist im Quiz-Modus.
+Erstelle interaktive Quizfragen mit vier Antwortmöglichkeiten.
+Verwende das vorgeschriebene [QUIZ]-Format.
+`
+};
+
     
 async function handleSend() {
     const text = userInput.value.trim();
@@ -1213,40 +1253,6 @@ if (builderType) {
         }
     }
 
-    // ==========================================
-// MODE INSTRUCTIONS
-// ==========================================
-
-const modeInstructions = {
-    chat: `
-Du bist im normalen Chat-Modus.
-Beantworte Fragen natürlich, hilfreich und ausführlich.
-`,
-
-    canvas: `
-Du bist im Canvas-Modus.
-Erstelle vollständige, funktionierende Programme und Anwendungen.
-Verwende passende Codeblöcke.
-`,
-
-    trip: `
-Du bist im Reiseplaner-Modus.
-Erstelle strukturierte Reisepläne mit Sehenswürdigkeiten und Tagesabläufen.
-Verwende das vorgeschriebene [TRIP]-Format.
-`,
-
-    recipe: `
-Du bist im Rezept-Modus.
-Erstelle verständliche Rezepte mit Zutaten und Zubereitung.
-Verwende das vorgeschriebene [RECIPE]-Format.
-`,
-
-    quiz: `
-Du bist im Quiz-Modus.
-Erstelle interaktive Quizfragen mit vier Antwortmöglichkeiten.
-Verwende das vorgeschriebene [QUIZ]-Format.
-`
-};
     
 
     const systemPrompt = `# ROLLE & TONFALL
@@ -1404,9 +1410,6 @@ botBubble.innerHTML = "";
 // Stream ist vollständig abgeschlossen
 animationActive = false;
 
-if (animationPromise) {
-    await animationPromise;
-}
 
 
 
@@ -1513,6 +1516,11 @@ const nameRes = await fetch(
     } finally {
     animationActive = false;
     isTyping = false;
+
+    if (animationPromise) {
+        await animationPromise;
+    }
+}
 }
 }
 
