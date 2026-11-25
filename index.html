@@ -577,6 +577,46 @@
     background: var(--bg-color, #1e1e1e);
     color: #fff;
 }
+
+        
+.answer-fade-in {
+    animation: answerFadeIn 0.65s ease-out both;
+}
+
+@keyframes answerFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+        filter: blur(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }
+}
+
+.builder-animation-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 35px;
+    animation: builderFade 0.35s ease;
+}
+
+@keyframes builderFade {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
     </style>
 </head>
 <body data-theme="auto">
@@ -1022,25 +1062,56 @@ function handleModelChange() {
     }
 }
 
-// Hilfsfunktion für wechselnde Animations-Texte
-async function showBuilderAnimation(bubbleElement, type) {
+async function showBuilderAnimation(bubbleElement, type, isActive) {
     const texts = {
-        canvas: ["App wird analysiert...", "Struktur wird aufgebaut...", "Code & Vorschau werden generiert..."],
-        trip: ["Reiseziele werden geprüft...", "Route wird berechnet...", "Tagespläne werden optimiert..."],
-        recipe: ["Zutaten werden abgestimmt...", "Kochanleitung wird strukturiert...", "Rezept wird finalisiert..."],
-        quiz: ["Fragen werden erstellt...", "Antwortmöglichkeiten werden gemischt...", "Quiz wird vorbereitet..."]
+        canvas: [
+            "App wird analysiert...",
+            "Struktur wird aufgebaut...",
+            "Komponenten werden entwickelt...",
+            "Design wird optimiert...",
+            "Code wird generiert...",
+            "Funktionalität wird geprüft..."
+        ],
+        trip: [
+            "Reiseziele werden geprüft...",
+            "Sehenswürdigkeiten werden recherchiert...",
+            "Route wird berechnet...",
+            "Tagespläne werden optimiert...",
+            "Reiseplan wird zusammengestellt..."
+        ],
+        recipe: [
+            "Zutaten werden abgestimmt...",
+            "Rezept wird entwickelt...",
+            "Zubereitung wird strukturiert...",
+            "Mengen werden überprüft..."
+        ],
+        quiz: [
+            "Fragen werden erstellt...",
+            "Antwortmöglichkeiten werden vorbereitet...",
+            "Schwierigkeitsgrad wird abgestimmt...",
+            "Quiz wird zusammengestellt..."
+        ]
     };
 
-    const steps = texts[type] || ["Inhalt wird konstruiert...", "Fast fertig..."];
-    
-    for (let i = 0; i < steps.length; i++) {
+    const steps = texts[type] || [
+        "Anfrage wird analysiert...",
+        "Antwort wird generiert...",
+        "Fast fertig..."
+    ];
+
+    let index = 0;
+
+    while (isActive()) {
         bubbleElement.innerHTML = `
             <div class="builder-animation-box">
                 <div class="builder-spinner"></div>
-                <span>${steps[i]}</span>
+                <span>${steps[index]}</span>
             </div>
         `;
-        await new Promise(r => setTimeout(r, 900)); // Wechselt alle 0.9 Sekunden den Text
+
+        index = (index + 1) % steps.length;
+
+        await new Promise(resolve => setTimeout(resolve, 1100));
     }
 }
     
@@ -1097,9 +1168,17 @@ if (/website|app|html|javascript|programm|code|canvas/.test(lowerText)) {
 }
 
 // Animation direkt starten
+let animationActive = true;
+let animationPromise = null;
+
 if (builderType) {
     const loadingBubble = loadingIndicator.querySelector(".bubble");
-    showBuilderAnimation(loadingBubble, builderType);
+
+    animationPromise = showBuilderAnimation(
+        loadingBubble,
+        builderType,
+        () => animationActive
+    );
 }
     // Hier bleibt dein Original-History-Handling exakt wie gehabt
     const history = allChats[currentId].messages.slice(-8).map(m => ({ 
@@ -1240,14 +1319,16 @@ Glame Pro: "Hallo! 👋 Mir geht es super, danke der Nachfrage! ✨ Wie kann ich
             return;
         }
 
-        loadingIndicator.remove();
-        const botBubble = addMsgUI("bot", "");
+      
+// Ladeanimation NICHT entfernen!
+// Antwort zunächst nur im Hintergrund empfangen.
+
+const botBubble = null;
+
         
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
-
-        initTypewriter(botBubble);
 
         while (true) {
             const { done, value } = await reader.read();
@@ -1267,14 +1348,36 @@ Glame Pro: "Hallo! 👋 Mir geht es super, danke der Nachfrage! ✨ Wie kann ich
                     const content = json.response ?? json.choices?.[0]?.delta?.content ?? "";
                     if (content) {
                         fullReply += content;
-                        feedTypewriter(content);
                         chatWindow.scrollTop = chatWindow.scrollHeight;
                     }
                 } catch (e) {}
             }
         }
         
-        await flushTypewriter(fullReply);
+        
+// Stream ist vollständig abgeschlossen
+animationActive = false;
+
+if (animationPromise) {
+    await animationPromise;
+}
+
+// Ladeanimation entfernen
+loadingIndicator.remove();
+
+// Fertige Antwort erstellen
+const botBubble = addMsgUI("bot", "");
+
+// Antwort elegant einblenden
+botBubble.classList.add("answer-fade-in");
+
+updateBubbleContent(botBubble, fullReply);
+
+chatWindow.scrollTop = chatWindow.scrollHeight;
+
+// Für deine bestehende Canvas- und Spezialformat-Logik
+currentTypingElement = botBubble;
+
 
         const canvasData = detectCanvasContent(fullReply);
         let autoTitle = "";
