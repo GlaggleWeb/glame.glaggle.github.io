@@ -751,7 +751,6 @@
     let currentUser = null;
     let glaggleProfile = null; 
 
-    const API_KEY = "gsk_ImbDfvvSXzXJfw80" + "vZP5WGdyb3FYknkYv77z" + "RJZN3pfyA1PiRGWu";
     let attachedImage = null;
     let allChats = JSON.parse(localStorage.getItem("glame_v4_chats")) || {};
     let currentId = localStorage.getItem("glame_v4_now") || "chat_" + Date.now();
@@ -1152,20 +1151,30 @@ async function handleSend() {
    const loadingIndicator = showLoadingIndicator();
 let fullReply = "";
 
-// Builder-Typ anhand der Anfrage erkennen
 const lowerText = text.toLowerCase();
+
+const selectedMode = document.getElementById("mode-select").value;
 
 let builderType = null;
 
-if (/website|app|html|javascript|programm|code|canvas/.test(lowerText)) {
-    builderType = "canvas";
-} else if (/reise|urlaub|trip|sightseeing|reiseplan/.test(lowerText)) {
-    builderType = "trip";
-} else if (/rezept|kochen|backen|zutaten/.test(lowerText)) {
-    builderType = "recipe";
-} else if (/quiz|test|prüfungsfragen|übungsfragen/.test(lowerText)) {
-    builderType = "quiz";
+// Chat-Modus: Automatische Erkennung
+if (selectedMode === "chat") {
+
+    if (/website|app|html|javascript|programm|code|canvas/.test(lowerText)) {
+        builderType = "canvas";
+    } else if (/reise|urlaub|trip|sightseeing|reiseplan/.test(lowerText)) {
+        builderType = "trip";
+    } else if (/rezept|kochen|backen|zutaten/.test(lowerText)) {
+        builderType = "recipe";
+    } else if (/quiz|test|prüfungsfragen|übungsfragen/.test(lowerText)) {
+        builderType = "quiz";
+    }
+
+} else {
+    // Explizit ausgewählter Modus
+    builderType = selectedMode;
 }
+
 
 // Animation direkt starten
 let animationActive = true;
@@ -1290,20 +1299,21 @@ Wenn du eine normale Textantwort gibst (und KEIN Spezial-Format genutzt hast), k
 # BEISPIEL FÜR DEIN VERHALTEN
 Nutzer: "Hi, wie geht's?"
 Glame Pro: "Hallo! 👋 Mir geht es super, danke der Nachfrage! ✨ Wie kann ich dir heute helfen? Suchst du nach Inspiration, hast du eine Frage oder planen wir etwas Spannendes? 😊"`;
+    const finalSystemPrompt =
+    systemPrompt + "\n\n" + modeInstructions[selectedMode];
     const payload = {
         model: document.getElementById("model-select").value,
         stream: true,
         messages: [
             { 
                 role: "system", 
-                content: systemPrompt
+                content: finalSystemPrompt
             },
             ...history,
             { role: "user", content: userContent }
         ]
     };
 
-    payload.model = "@cf/google/gemma-4-26b-a4b-it"; 
 
     try {
         const res = await fetch("https://shiny-credit-811f.rhpjmf7t2s.workers.dev", {
@@ -1465,8 +1475,9 @@ const nameRes = await fetch(
         loadingIndicator.remove();
         addMsgUI("bot", "Hoppla! Es gab einen Netzwerkfehler. Bitte versuche es noch einmal.");
     } finally {
-        isTyping = false;
-    }
+    animationActive = false;
+    isTyping = false;
+}
 }
 
     // ==========================================
