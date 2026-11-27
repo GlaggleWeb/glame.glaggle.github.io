@@ -1052,58 +1052,98 @@ function handleModelChange() {
 }
 
 async function showBuilderAnimation(bubbleElement, type, isActive) {
-    const texts = {
-        canvas: [
-            "App wird analysiert...",
-            "Struktur wird aufgebaut...",
-            "Komponenten werden entwickelt...",
-            "Design wird optimiert...",
-            "Code wird generiert...",
-            "Funktionalität wird geprüft..."
-        ],
-        trip: [
-            "Reiseziele werden geprüft...",
-            "Sehenswürdigkeiten werden recherchiert...",
-            "Route wird berechnet...",
-            "Tagespläne werden optimiert...",
-            "Reiseplan wird zusammengestellt..."
-        ],
-        recipe: [
-            "Zutaten werden abgestimmt...",
-            "Rezept wird entwickelt...",
-            "Zubereitung wird strukturiert...",
-            "Mengen werden überprüft..."
-        ],
-        quiz: [
-            "Fragen werden erstellt...",
-            "Antwortmöglichkeiten werden vorbereitet...",
-            "Schwierigkeitsgrad wird abgestimmt...",
-            "Quiz wird zusammengestellt..."
-        ]
+    const configs = {
+        canvas: {
+            icon: "fa-code",
+            accent: "#6d4aff",
+            steps: [
+                "App wird analysiert...",
+                "Struktur wird aufgebaut...",
+                "Komponenten werden entwickelt...",
+                "Design wird optimiert...",
+                "Code wird generiert...",
+                "Funktionalität wird geprüft..."
+            ]
+        },
+        trip: {
+            icon: "fa-plane",
+            accent: "#00a8ff",
+            steps: [
+                "Reiseziele werden geprüft...",
+                "Sehenswürdigkeiten werden recherchiert...",
+                "Route wird berechnet...",
+                "Tagespläne werden optimiert...",
+                "Reiseplan wird zusammengestellt..."
+            ]
+        },
+        recipe: {
+            icon: "fa-utensils",
+            accent: "#ff7043",
+            steps: [
+                "Zutaten werden abgestimmt...",
+                "Rezept wird entwickelt...",
+                "Zubereitung wird strukturiert...",
+                "Mengen werden überprüft..."
+            ]
+        },
+        quiz: {
+            icon: "fa-brain",
+            accent: "#34A853",
+            steps: [
+                "Fragen werden erstellt...",
+                "Antwortmöglichkeiten werden vorbereitet...",
+                "Schwierigkeitsgrad wird abgestimmt...",
+                "Quiz wird zusammengestellt..."
+            ]
+        }
     };
 
-    const steps = texts[type] || [
-        "Anfrage wird analysiert...",
-        "Antwort wird generiert...",
-        "Fast fertig..."
-    ];
+    const cfg = configs[type] || {
+        icon: "fa-wand-magic-sparkles",
+        accent: "#6d4aff",
+        steps: ["Anfrage wird analysiert...", "Antwort wird generiert...", "Fast fertig..."]
+    };
+
+    // Grundgerüst EINMAL bauen (nicht bei jedem Step neu!)
+    bubbleElement.innerHTML = `
+        <div class="builder-anim">
+            <div class="builder-head">
+                <div class="builder-icon" style="--accent: ${cfg.accent}">
+                    <i class="fas ${cfg.icon}"></i>
+                </div>
+                <div class="builder-text">
+                    <span class="builder-step"></span>
+                    <div class="builder-dots"><span></span><span></span><span></span></div>
+                </div>
+            </div>
+            <div class="builder-progress">
+                <div class="builder-progress-bar" style="--accent: ${cfg.accent}"></div>
+            </div>
+        </div>
+    `;
+
+    const stepEl = bubbleElement.querySelector(".builder-step");
+    const progressBar = bubbleElement.querySelector(".builder-progress-bar");
 
     let index = 0;
-
     while (isActive()) {
-        bubbleElement.innerHTML = `
-            <div class="builder-animation-box">
-                <div class="builder-spinner"></div>
-                <span>${steps[index]}</span>
-            </div>
-        `;
+        // Sanfter Übergang: Text ausblenden → wechseln → einblenden
+        stepEl.classList.add("step-fade-out");
+        await new Promise(r => setTimeout(r, 250));
 
-        index = (index + 1) % steps.length;
+        if (!isActive()) break;
 
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        stepEl.textContent = cfg.steps[index];
+        stepEl.classList.remove("step-fade-out");
+
+        // Fortschrittsbalken füllt sich pro Step
+        const progress = ((index + 1) / cfg.steps.length) * 100;
+        progressBar.style.width = progress + "%";
+
+        index = (index + 1) % cfg.steps.length;
+        await new Promise(r => setTimeout(r, 2200));
     }
 }
-
     const modeInstructions = {
     chat: `
 Du bist im normalen Chat-Modus.
