@@ -597,26 +597,110 @@
     }
 }
 
-.builder-animation-box {
+/* ===== Builder-Animation ===== */
+.builder-anim {
+    padding: 4px 2px;
+    min-width: 260px;
+}
+
+.builder-head {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-height: 35px;
-    animation: builderFade 0.35s ease;
+    gap: 14px;
+    margin-bottom: 12px;
 }
 
-@keyframes builderFade {
-    from {
-        opacity: 0;
-        transform: translateY(5px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.builder-icon {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: white;
+    background: var(--accent, #6d4aff);
+    animation: builder-pulse 2s ease-in-out infinite;
 }
 
+@keyframes builder-pulse {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(0,0,0,0.08); }
+    50%      { transform: scale(1.06); box-shadow: 0 4px 18px rgba(0,0,0,0.12); }
+}
+
+.builder-text {
+    flex: 1;
+}
+
+.builder-step {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 500;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* Text gleitet beim Wechsel leicht nach oben raus */
+.builder-step.step-fade-out {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+/* Hüpfende Punkte statt statischer Spinner-Dots */
+.builder-dots {
+    display: flex;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.builder-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent, #6d4aff);
+    opacity: 0.35;
+    animation: dot-hop 1.2s ease-in-out infinite;
+}
+
+.builder-dots span:nth-child(2) { animation-delay: 0.15s; }
+.builder-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes dot-hop {
+    0%, 60%, 100% { transform: translateY(0);    opacity: 0.35; }
+    30%           { transform: translateY(-5px); opacity: 1; }
+}
+
+/* Fortschrittsbalken */
+.builder-progress {
+    height: 5px;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--accent, #6d4aff) 15%, transparent);
+    overflow: hidden;
+}
+
+.builder-progress-bar {
+    height: 100%;
+    width: 8%;
+    border-radius: 99px;
+    background: var(--accent, #6d4aff);
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dezenter Schimmer quer über den Balken */
+.builder-progress-bar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+    animation: shimmer 1.6s infinite;
+}
+
+@keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(100%); }
+}
     </style>
 </head>
 <body data-theme="auto">
