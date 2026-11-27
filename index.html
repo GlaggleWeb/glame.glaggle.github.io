@@ -1208,26 +1208,26 @@ async function showBuilderAnimation(bubbleElement, type, isActive) {
 
     const stepEl = bubbleElement.querySelector(".builder-step");
     const progressBar = bubbleElement.querySelector(".builder-progress-bar");
+let index = 0;
+while (isActive()) {                                  
+    if (!bubbleElement.isConnected) break;
 
-    let index = 0;
-    while (isActive()) 
-        if (!bubbleElement.isConnected) break;
-        // Sanfter Übergang: Text ausblenden → wechseln → einblenden
-        stepEl.classList.add("step-fade-out");
-        await new Promise(r => setTimeout(r, 250));
+    // Sanfter Übergang: Text ausblenden → wechseln → einblenden
+    stepEl.classList.add("step-fade-out");
+    await new Promise(r => setTimeout(r, 250));
 
-        if (!isActive()) break;
+    if (!isActive()) break;
 
-        stepEl.textContent = cfg.steps[index];
-        stepEl.classList.remove("step-fade-out");
+    stepEl.textContent = cfg.steps[index];
+    stepEl.classList.remove("step-fade-out");
 
-        // Fortschrittsbalken füllt sich pro Step
-        const progress = ((index + 1) / cfg.steps.length) * 100;
-        progressBar.style.width = progress + "%";
+    // Fortschrittsbalken füllt sich pro Step
+    const progress = ((index + 1) / cfg.steps.length) * 100;
+    progressBar.style.width = progress + "%";
 
-        index = (index + 1) % cfg.steps.length;
-        await new Promise(r => setTimeout(r, 2200));
-    }
+    index = (index + 1) % cfg.steps.length;
+    await new Promise(r => setTimeout(r, 2200));
+}
 }
     const modeInstructions = {
     chat: `
