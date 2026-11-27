@@ -2109,46 +2109,75 @@ function parseAndRenderQuiz(text, bubbleElement) {
 let canvasState = { open: false, type: null, content: "", language: "", title: "" };
 let canvasFileCounter = 0;
 
+// ==========================================
+// CANVAS MODE
+// ==========================================
 function detectCanvasContent(text) {
- if (!text || typeof text !== "string") return null;
-// Vollständige HTML-Dokumente erkennen
-const htmlMatch = text.match(/html\s*([\s\S]*?)/i);
-if (htmlMatch) {
-return {
-type: "code",
-language: "html",
-content: htmlMatch[1].trim()
-};
-}
-// Codeblöcke erkennen
-const codeBlockRegex = /([\w+-]+)?\s*\n([\s\S]*?)(?:|$)/g;
-let match;
-let biggestCode = null;
-while ((match = codeBlockRegex.exec(text)) !== null) {
-const lang = (match[1] || "text").toLowerCase();
-const code = match[2].trim();
-if (!biggestCode || code.length > biggestCode.code.length) {
-biggestCode = { lang, code };
-}
-}
-if (biggestCode) {
-const code = biggestCode.code;
-const lang = biggestCode.lang;
-const isFullHtml =
-/<!DOCTYPE html|<html[\s>]/i.test(code);
-const isFullProgram =
-isFullHtml ||
-code.split("\n").length > 25 ||
-/\bfunction\s+\w+|\bclass\s+\w+|=>\s*{/i.test(code);
-if (isFullProgram) {
-return {
-type: "code",
-language: lang,
-content: code
-};
-}
-}
-return null;
+    if (!text || typeof text !== "string") return null;
+
+    // ---------- 1. HTML-Codeblöcke erkennen ----------
+    // matcht ```html ... ``` (auch ```HTML o.ä.)
+    const htmlMatch = text.match(/```html\s*\n?([\s\S]*?)```/i);
+    if (htmlMatch) {
+        const content = htmlMatch[1].trim();
+        // Nur übernehmen, wenn es wirklich ein HTML-Dokument/Markup ist
+        if (/<(!DOCTYPE|html|head|body|div|section|main|script|style)/i.test(content)) {
+            return {
+                type: "code",
+                language: "html",
+                content: content
+            };
+        }
+    }
+
+    // ---------- 2. Fallback: vollständiges HTML-Dokument ohne Codeblock ----------
+    // (falls das Modell den ```-Block vergisst)
+    const doctypeIdx = text.search(/<!DOCTYPE html|<html[\s>]/i);
+    if (doctypeIdx !== -1) {
+        return {
+            type: "code",
+            language: "html",
+            content: text.slice(doctypeIdx).trim()
+        };
+    }
+
+    // ---------- 3. Beliebige Codeblöcke erkennen ----------
+    // matcht ```lang ... ``` – "lang" ist optional (```\ncode```)
+    const codeBlockRegex = /```([\w+-]*)\s*\n?([\s\S]*?)```/g;
+    let match;
+    let biggestCode = null;
+
+    while ((match = codeBlockRegex.exec(text)) !== null) {
+        const lang = (match[1] || "text").toLowerCase();
+        const code = match[2].trim();
+
+        // Von Markdown/Sprachcode mitgedesamten kleineren Blöcken ignorieren
+        if (!code) continue;
+
+        if (!biggestCode || code.length > biggestCode.code.length) {
+            biggestCode = { lang, code };
+        }
+    }
+
+    if (biggestCode) {
+        const code = biggestCode.code;
+        const lang = biggestCode.lang;
+        const isFullHtml = /<!DOCTYPE html|<html[\s>]/i.test(code);
+        const isFullProgram =
+            isFullHtml ||
+            code.split("\n").length > 25 ||
+            /\bfunction\s+\w+|\bclass\s+\w+|=>\s*\{/i.test(code);
+
+        if (isFullProgram) {
+            return {
+                type: "code",
+                language: lang,
+                content: code
+            };
+        }
+    }
+
+    return null;
 }
 
 function openCanvas(data, title) {
