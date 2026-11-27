@@ -1497,20 +1497,12 @@ Glame Pro: "Hallo! 👋 Mir geht es super, danke der Nachfrage! ✨ Wie kann ich
       
 const botBubble = loadingIndicator.querySelector(".bubble");
 
-// Ladeanimation weich entfernen und Streaming-Indikator zeigen
-const animBox = botBubble.querySelector(".builder-anim");
-if (animBox) {
-    animBox.style.transition = "opacity 0.25s ease";
-    animBox.style.opacity = "0";
-    await new Promise(r => setTimeout(r, 250));
-}
-animationActive = false;   // Animation-Loop sauber stoppen
-botBubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
 
-        
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
+const reader = res.body.getReader();
+const decoder = new TextDecoder("utf-8");
+let buffer = "";
+
+
 
         while (true) {
             const { done, value } = await reader.read();
@@ -1537,6 +1529,19 @@ botBubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><
 }
             }
         }
+
+        animationActive = false;
+if (animationPromise) await animationPromise;   // Loop beendet sich sauber
+
+const animBox = botBubble.querySelector(".builder-anim");
+if (animBox) {
+    animBox.style.transition = "opacity 0.25s ease";
+    animBox.style.opacity = "0";
+    await new Promise(r => setTimeout(r, 250));
+}
+botBubble.classList.add("answer-fade-in");
+updateBubbleContent(botBubble, fullReply);
+        
         
         
 // Stream ist vollständig abgeschlossen
