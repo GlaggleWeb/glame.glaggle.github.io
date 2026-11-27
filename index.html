@@ -1361,6 +1361,14 @@ Glame Pro: "Hallo! 👋 Mir geht es super, danke der Nachfrage! ✨ Wie kann ich
             return;
         }
 
+        if (!res.ok) {
+    loadingIndicator.remove();
+    addMsgUI("bot", `⚠️ **Server-Fehler (${res.status}):** Der Worker hat geantwortet, aber mit einem Fehler.`);
+    isTyping = false;
+    return;
+}
+        
+
       
 const botBubble = loadingIndicator.querySelector(".bubble");
 
@@ -1392,7 +1400,9 @@ botBubble.innerHTML = "";
                         fullReply += content;
                         chatWindow.scrollTop = chatWindow.scrollHeight;
                     }
-                } catch (e) {}
+                } catch (e) {
+    console.error("Stream-Parse-Fehler:", l, e);  // statt catch {}
+}
             }
         }
         
@@ -1405,6 +1415,13 @@ animationActive = false;
 
 // Antwort elegant einblenden
 botBubble.classList.add("answer-fade-in");
+
+if (!fullReply.trim()) {
+    loadingIndicator.remove();
+    addMsgUI("bot", "⚠️ Ich habe eine Antwort erhalten, aber sie war leer. Bitte versuche es erneut oder wähle ein anderes Modell.");
+    isTyping = false;
+    return;
+}
 
 updateBubbleContent(botBubble, fullReply);
 
@@ -1440,10 +1457,10 @@ if (canvasData) {
 }
 
         // Spezial-Formate haben Vorrang
-        const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
-        const isTrip = !isQuiz && parseAndRenderTrip(fullReply, currentTypingElement);
-        const isRecipe = !isQuiz && !isTrip && parseAndRenderRecipe(fullReply, currentTypingElement);
-
+const isQuiz = parseAndRenderQuiz(fullReply, currentTypingElement);
+const isTrip = !isQuiz && parseAndRenderTrip(fullReply, currentTypingElement);
+const isRecipe = !isQuiz && !isTrip && parseAndRenderRecipe(fullReply, currentTypingElement);
+        
         if (!isQuiz && !isTrip && !isRecipe) {
             const { cleanedText: replyWithoutSuggestions, suggestions } = parseSuggestions(fullReply);
             fullReply = replyWithoutSuggestions;
