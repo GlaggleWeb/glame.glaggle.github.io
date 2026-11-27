@@ -1258,6 +1258,8 @@ async function showBuilderAnimation(bubbleElement, type, isActive) {
         stepEl.textContent = label;
     };
 
+    liveProgress.finish = () => progressBar.style.width = "100%";
+
     liveProgress.update = (rawText) => {
         // Modus automatisch wechseln, sobald Spezial-Tag auftaucht
         if (rawText.includes("[RECIPE]") && type !== "recipe") switchMode("recipe");
@@ -1649,17 +1651,18 @@ updateBubbleContent(botBubble, fullReply);
         
         
         
-// Stream ist vollständig abgeschlossen
 // Stream fertig → Tags entfernen, Balken auf 100 %
 fullReply = fullReply
     .replace(/\(\(\([\s\S]*?\)\)\)/g, "")
     .replace(/\(\(\([^)]*$/, "")
     .trim();
 
-progressBarAccess.style.width = "100%";
+if (liveProgress.finish) liveProgress.finish();   // ← statt progressBarAccess
+
 liveProgress.update = null;
 liveProgress.setProgress = null;
 liveProgress.setLabel = null;
+liveProgress.finish = null;
 
 await sleepWhile(400);
 animationActive = false;
