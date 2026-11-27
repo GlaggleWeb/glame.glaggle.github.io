@@ -1664,7 +1664,7 @@ liveProgress.setProgress = null;
 liveProgress.setLabel = null;
 liveProgress.finish = null;
 
-await sleepWhile(400);
+await new Promise(r => setTimeout(r, 400));   
 animationActive = false;
 
 
