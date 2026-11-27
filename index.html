@@ -1430,8 +1430,8 @@ chatWindow.scrollTop = chatWindow.scrollHeight;
 // Für deine bestehende Canvas- und Spezialformat-Logik
 currentTypingElement = botBubble;
 
-
 const canvasData = detectCanvasContent(fullReply);
+let autoTitle = null;   // ← HIER deklarieren
 
 if (canvasData) {
     const chatSummary =
@@ -1440,19 +1440,13 @@ if (canvasData) {
 
     updateBubbleContent(botBubble, chatSummary);
 
-    const autoTitle = canvasData.type === "code"
+    autoTitle = canvasData.type === "code"           // ← nur noch zuweisen, kein const
         ? `${canvasData.language.toUpperCase()}-Projekt`
         : "Generierte Geschichte";
 
     currentTypingElement = botBubble;
-
     openCanvas(canvasData, autoTitle);
-
-    insertCanvasFileCard(botBubble, {
-        ...canvasData,
-        title: autoTitle
-    });
-
+    insertCanvasFileCard(botBubble, { ...canvasData, title: autoTitle });
     fullReply = chatSummary;
 }
 
