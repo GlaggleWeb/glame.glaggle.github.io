@@ -701,6 +701,18 @@
     from { transform: translateX(-100%); }
     to   { transform: translateX(100%); }
 }
+
+        .builder-live {
+    font-size: 0.8rem;
+    color: var(--desc-color, #889);
+    margin-bottom: 10px;
+    min-height: 1.2em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.85;
+}
+        
     </style>
 </head>
 <body data-theme="auto">
@@ -839,6 +851,12 @@
     let allChats = JSON.parse(localStorage.getItem("glame_v4_chats")) || {};
     let currentId = localStorage.getItem("glame_v4_now") || "chat_" + Date.now();
     let isTyping = false;
+    // Live-Progress-Schnittstelle (vom Stream gefüttert, von der Animation genutzt)
+const liveProgress = {
+    update: null,       // setLiveText + Schätz-Balken
+    setProgress: null,  // echte KI-Prozente
+    setLabel: null      // KI-Status-Text statt statischer Steps
+};
 
     // Typewriter Queue-Variablen für Live-Typing
     let typingQueue = "";
@@ -1200,6 +1218,7 @@ async function showBuilderAnimation(bubbleElement, type, isActive) {
                     <div class="builder-dots"><span></span><span></span><span></span></div>
                 </div>
             </div>
+            <div class="builder-live"></div>
             <div class="builder-progress">
                 <div class="builder-progress-bar" style="--accent: ${cfg.accent}"></div>
             </div>
@@ -1208,13 +1227,66 @@ async function showBuilderAnimation(bubbleElement, type, isActive) {
 
     const stepEl = bubbleElement.querySelector(".builder-step");
     const progressBar = bubbleElement.querySelector(".builder-progress-bar");
+        const sleepWhile = async (ms) => {
+        const end = Date.now() + ms;
+        while (Date.now() < end && isActive() && bubbleElement.isConnected) {
+            await new Promise(r => setTimeout(r, 100));
+        }
+    };
+        const liveEl = bubbleElement.querySelector(".builder-live");
+
+    // Erwartete Antwortlängen pro Modus (Basis für Schätz-Fortschritt)
+    const targets = { canvas: 6000, trip: 2000, recipe: 1200, quiz: 1500 };
+    const targetChars = targets[type] || 800;
+    let aiControlled = false;
+    let index = 0;   // falls nicht schon weiter oben deklariert
+
+    function switchMode(newType) {
+        const c = configs[newType];
+        bubbleElement.querySelector(".builder-icon i").className = "fas " + c.icon;
+        bubbleElement.querySelector(".builder-icon").style.setProperty("--accent", c.accent);
+        progressBar.style.setProperty("--accent", c.accent);
+        index = 0;
+    }
+
+    liveProgress.setProgress = (pct) => {
+        aiControlled = true;
+        progressBar.style.width = pct + "%";
+    };
+
+    liveProgress.setLabel = (label) => {
+        stepEl.textContent = label;
+    };
+
+    liveProgress.update = (rawText) => {
+        // Modus automatisch wechseln, sobald Spezial-Tag auftaucht
+        if (rawText.includes("[RECIPE]") && type !== "recipe") switchMode("recipe");
+        else if (rawText.includes("[TRIP]") && type !== "trip") switchMode("trip");
+        else if (rawText.includes("[QUIZ]") && type !== "quiz") switchMode("quiz");
+
+        // Live-Snippet: Progress-Tags und Code-Fetzen herausfiltern
+        const snippet = rawText
+            .replace(/\(\(\([\s\S]*?\)\)\)/g, "")
+            .replace(/\(\(\([^)]*$/, "")
+            .replace(/```[\s\S]*/g, "… Code wird generiert …")
+            .replace(/[#*_>`~\[\]]/g, "")
+            .trim();
+        liveEl.textContent = snippet.slice(-90);
+
+        // Schätz-Balken nur, wenn die KI noch keine echten Prozente lieferte
+        if (!aiControlled) {
+            const est = Math.min(95, Math.round((snippet.length / targetChars) * 100));
+            progressBar.style.width = Math.max(8, est) + "%";
+        }
+    };
+    
 let index = 0;
 while (isActive()) {                                  
     if (!bubbleElement.isConnected) break;
 
     // Sanfter Übergang: Text ausblenden → wechseln → einblenden
     stepEl.classList.add("step-fade-out");
-    await new Promise(r => setTimeout(r, 250));
+    await sleepWhile(250);
 
     if (!isActive()) break;
 
@@ -1226,8 +1298,7 @@ while (isActive()) {
     progressBar.style.width = progress + "%";
 
     index = (index + 1) % cfg.steps.length;
-    await new Promise(r => setTimeout(r, 2200));
-}
+    await sleepWhile(2200);
 }
     const modeInstructions = {
     chat: `
@@ -1389,6 +1460,20 @@ Du bist **Glame Pro** – ein charmanter, intelligenter und lebendiger KI-Assist
 # SPEZIAL-FORMATE (NUR BEI EXPLIZITER ANFRAGE)
 Wenn der Nutzer dich ausdrücklich nach einem der folgenden 3 Dinge fragt, antworte **AUSSCHLIESSLICH** mit dem jeweiligen Code-Block. Schreibe **KEINEN** Begrüßungs- oder Schlusstext davor oder danach!
 
+# PROGRESS-TAGS (LIVE-STATUS)
+Während du eine längere Antwort erstellst (Rezept, Reiseplan, Quiz, Code/App),
+füge nach JEDEM ca. 20 Zeilen genau EINE eigene Zeile in diesem Format ein:
+
+(((Was du gerade machst | XX%)))
+
+Regeln:
+- XX ist dein geschätzter Fortschritt in Prozent (10, 20, 30 ... 90).
+- Der Tag steht immer auf einer eigenen Zeile, ohne Text davor/danach.
+- Der Text nach "|" ist kurz und beschreibt, was du als Nächstes erstellst
+  (z. B. "(((Zutatenliste wird erstellt | 30%)))").
+- Füge die Tags NIEMALS innerhalb eines Code-Blocks oder JSON ein.
+- Bei kurzen Antworten unter 20 Zeilen keine Tags.
+
 ### 1. Reiseplanung / Sightseeing-Trip
 *Auslöser: Nutzer fragt explizit nach einer Reiseroute, einem Urlaubsplan oder Sightseeing-Stops.*
 *Regel: Erstelle pro Tag 3–5 Stops. Nutze spezifische englische Suchbegriffe für \`img\` (z.B. "Senso-ji Temple Tokyo" statt nur "temple").*
@@ -1528,6 +1613,20 @@ let buffer = "";
                     const content = json.response ?? json.choices?.[0]?.delta?.content ?? "";
                     if (content) {
                         fullReply += content;
+
+                        // KI-Progress-Tags auswerten
+                        const matches = [...fullReply.matchAll(/\(\(\(([^|)]+?)\|\s*(\d{1,3})\s*%\)\)\)/g)];
+                        if (matches.length) {
+                            const last = matches[matches.length - 1];
+                            if (liveProgress.setProgress) {
+                                liveProgress.setProgress(Math.min(99, parseInt(last[2], 10)));
+                                liveProgress.setLabel(last[1].trim());
+                            }
+                        }
+
+                        // Live-Text + Schätz-Balken füttern
+                        if (liveProgress.update) liveProgress.update(fullReply);
+
                         chatWindow.scrollTop = chatWindow.scrollHeight;
                     }
                 } catch (e) {
@@ -1551,6 +1650,18 @@ updateBubbleContent(botBubble, fullReply);
         
         
 // Stream ist vollständig abgeschlossen
+// Stream fertig → Tags entfernen, Balken auf 100 %
+fullReply = fullReply
+    .replace(/\(\(\([\s\S]*?\)\)\)/g, "")
+    .replace(/\(\(\([^)]*$/, "")
+    .trim();
+
+progressBarAccess.style.width = "100%";
+liveProgress.update = null;
+liveProgress.setProgress = null;
+liveProgress.setLabel = null;
+
+await sleepWhile(400);
 animationActive = false;
 
 
