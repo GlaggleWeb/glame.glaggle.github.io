@@ -1522,10 +1522,11 @@ const nameRes = await fetch(
         save();
         syncChatsToCloud();
         renderChatList();
-    } catch (e) {
-        loadingIndicator.remove();
-        addMsgUI("bot", "Hoppla! Es gab einen Netzwerkfehler. Bitte versuche es noch einmal.");
-    } finally {
+  } catch (e) {
+    console.error("handleSend-Fehler (echte Ursache):", e);  // ← DAS fehlt!
+    loadingIndicator.remove();
+    addMsgUI("bot", "Hoppla! Es gab einen Fehler. Details in der Konsole (F12).");
+} finally {
     animationActive = false;
     isTyping = false;
 
